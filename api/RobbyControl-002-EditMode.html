@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Geräteverwaltung</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px; }
+        .container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); max-width: 600px; margin: auto; }
+        h2 { margin-bottom: 10px; }
+        .error { color: red; }
+        .menu { display: flex; gap: 10px; margin-bottom: 20px; }
+        .menu button { padding: 10px; cursor: pointer; }
+        input { width: 100%; padding: 5px; margin: 5px 0; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        table, th, td { border: 1px solid black; }
+        th, td { padding: 5px; text-align: left; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Geräteverwaltung</h2>
+        <div class="menu">
+            <button onclick="showStatus()">Status</button>
+            <button onclick="showConfig()">Gerätekonfiguration</button>
+        </div>
+        <div id="content">Wähle eine Option...</div>
+    </div>
+
+    <script>
+        let editMode = false;
+        let previousSettings = {};
+
+        async function fetchData(url, callback) {
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error("Fehler beim Abrufen der Daten");
+                const jsonData = await response.json();
+                callback(jsonData);
+            } catch (err) {
+                document.getElementById("content").innerHTML = `<p class="error">Fehler: ${err.message}</p>`;
+            }
+        }
+
+        function toggleEditMode() {
+            editMode = !editMode;
+            showConfig();
+        }
+
+        function cancelEdit() {
+            editMode = false;
+            showConfig();
+        }
+
+        function showStatus() {
+            fetchData("http://192.168.188.103/api/v1/system/status", (jsonData) => {
+                const config = jsonData.data[0];
+                document.getElementById("content").innerHTML = `
+                    <h3>Gerätestatus</h3>
+                    <p><strong>Status:</strong> ${config.status}</p>
+                    <p><strong>Modus:</strong> ${config.mode}</p>
+                    <h3>Shot Cycle</h3>
+                    <p><strong>Nächster Schuss Index:</strong> ${config.shot_cycle.next_shot_index}</p>
+                    <p><strong>Max. Schuss Index:</strong> ${config.shot_cycle.max_shot_index}</p>
+                    <p><strong>Pausenzeit bis zum nächsten Schuss:</strong> ${config.shot_cycle.pause_to_next_shot} Sekunden</p>
+                `;
+            });
+        }
+
+        function showConfig() {
+            fetchData("http://192.168.188.103/api/v1/system/config", (jsonData) => {
+                const config = jsonData.data[0];
+                const settings = config.settings;
+                let settingsHTML = `<h3>Gerätekonfiguration</h3>`;
+                settingsHTML += `<button onclick="toggleEditMode()">${editMode ? 'Übernehmen' : 'Bearbeiten'}</button>`;
+                if (editMode) {
+                    settingsHTML += `<button onclick="cancelEdit()">Abbrechen</button>`;
+                }
+
+                if (!editMode) {
+                    previousSettings = JSON.parse(JSON.stringify(settings));
+                }
+
+                for (const key in settings) {
+                    settingsHTML += `<p><strong>${key.replace(/_/g, ' ')}:</strong> ${editMode ? `<input id="${key}" value="${settings[key]}">` : settings[key]}</p>`;
+                }
+
+                let componentList = "<h3>Komponentenkonfiguration</h3>";
+                function createComponentLinks(type, count) {
+                    let html = `<h4>${type}:</h4>`;
+                    for (let i = 0; i < count; i++) {
+                        html += `<p><a href="#" onclick="showComponentConfig('${type.toLowerCase()}', ${i})">${type} ${i}</a></p>`;
+                    }
+                    return html;
+                }
+
+                componentList += createComponentLinks("BallFeeders", config.ballfeeders);
+                componentList += createComponentLinks("BallDrivers", config.balldrivers);
+                componentList += createComponentLinks("BallStirrers", config.ballstirrers);
+
+                document.getElementById("content").innerHTML = settingsHTML + componentList;
+            });
+        }
+
+        async function showComponentConfig(type, index) {
+            fetchData(`http://192.168.188.103/api/v1/${type}/${index}/config`, (jsonData) => {
+                const config = jsonData.data[0];
+                let configHTML = `<h3>${type} ${index} Konfiguration</h3>`;
+                configHTML += `<button onclick="showConfig()">Zurück</button>`;
+                configHTML += `<button onclick="toggleEditMode()">${editMode ? 'Übernehmen' : 'Bearbeiten'}</button>`;
+                if (editMode) {
+                    configHTML += `<button onclick="cancelEdit()">Abbrechen</button>`;
+                }
+                
+                for (const key in config) {
+                    if (Array.isArray(config[key])) {
+                        configHTML += `<h4>${key.replace(/_/g, ' ')}:</h4><table><tr><th>Index</th><th>Wert</th></tr>`;
+                        config[key].forEach((item, i) => {
+                            configHTML += `<tr><td>${i}</td><td>${editMode ? `<input value="${item}">` : item}</td></tr>`;
+                        });
+                        configHTML += `</table>`;
+                    } else {
+                        configHTML += `<p><strong>${key.replace(/_/g, ' ')}:</strong> ${editMode ? `<input value="${config[key]}">` : config[key]}</p>`;
+                    }
+                }
+                
+                document.getElementById("content").innerHTML = configHTML;
+            });
+        }
+    </script>
+</body>
+</html>

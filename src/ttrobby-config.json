@@ -1,0 +1,67 @@
+{
+    "general": {
+        "default_ballspeed": 1,
+        "default_ball_feeder_cycle": [
+            -40,
+            120,
+            -80
+        ],
+        "max_ball_frequency": 1,
+        "default_ball_feeder_mount_index": 1,
+        "default_topspin": 0,
+        "default_sidespin": 0
+    },
+    "ballfeeders": [
+        {
+            "pio_block_index": 0,
+            "inner_motor_steps": 32,
+            "consecutive_pins": 4,
+            "gear_ratio": 64,
+            "runner_freq": 20000,
+            "starting_gp_pin": 2,
+            "correction_steps": -4,
+            "counter_freq": 2000
+        }
+    ],
+    "ballstirrers": [
+        {
+            "pio_block_index": 1,
+            "inner_motor_steps": 32,
+            "consecutive_pins": 4,
+            "gear_ratio": 64,
+            "runner_freq": 20000,
+            "starting_gp_pin": 10,
+            "correction_steps": -4,
+            "counter_freq": 2000
+        }
+    ],
+    "balldrivers": [
+        {
+            "bd_number": 0,
+            "motors": [
+                {
+                    "motor_number": 0,
+                    "polarity": 1
+                },
+                {
+                    "motor_number": 1,
+                    "polarity": 1
+                }
+            ],
+            "wheel_diameters": [
+                0.04,
+                0.04
+            ],
+            "motor_driver": {
+                "i2c_channel": 1,
+                "sda_pin": 6,
+                "type": "PCA9685",
+                "address": 64
+            },
+            "motor_angles": [
+                0,
+                180
+            ]
+        }
+    ]
+}

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Geräteverwaltung</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px; }
+        .container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); max-width: 400px; margin: auto; }
+        h2 { margin-bottom: 10px; }
+        .error { color: red; }
+        .menu { display: flex; gap: 10px; margin-bottom: 20px; }
+        .menu button { padding: 10px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Geräteverwaltung</h2>
+        <div class="menu">
+            <button onclick="showStatus()">Status</button>
+            <button onclick="showConfig()">Konfiguration</button>
+        </div>
+        <div id="content">Wähle eine Option...</div>
+    </div>
+
+    <script>
+        const enums = {
+            "status": {
+                "0": "IDLE",
+                "1": "PREPARING",
+                "2": "PLAYING",
+                "3": "PAUSED",
+                "9": "STOPPING",
+                "99": "ERROR",
+            },
+            "mode": {
+                "0": "CONTINUOUS",
+                "1": "PROGRAM",
+                "2": "CONFIGURATION",
+            }
+        };
+
+        function getEnumText(category, value) {
+            return enums[category] && enums[category][value] !== undefined ? enums[category][value] : value;
+        }
+
+        async function fetchData(url, callback) {
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error("Fehler beim Abrufen der Daten");
+                const jsonData = await response.json();
+                callback(jsonData);
+            } catch (err) {
+                document.getElementById("content").innerHTML = `<p class="error">Fehler: ${err.message}</p>`;
+            }
+        }
+
+        function showStatus() {
+            fetchData("http://192.168.188.103/api/v1/system/status", (jsonData) => {
+                const config = jsonData.data[0];
+                document.getElementById("content").innerHTML = `
+                    <h3>Gerätestatus</h3>
+                    <p><strong>Status:</strong> ${getEnumText("status", config.status)}</p>
+                    <p><strong>Modus:</strong> ${getEnumText("mode", config.mode)}</p>
+                    <h3>Shot Cycle</h3>
+                    <p><strong>Nächster Schuss Index:</strong> ${config.shot_cycle.next_shot_index}</p>
+                    <p><strong>Max. Schuss Index:</strong> ${config.shot_cycle.max_shot_index}</p>
+                    <p><strong>Pausenzeit bis zum nächsten Schuss:</strong> ${config.shot_cycle.pause_to_next_shot} Sekunden</p>
+                `;
+            });
+        }
+
+        function showConfig() {
+            fetchData("http://192.168.188.103/api/v1/system/config", (jsonData) => {
+                const config = jsonData.data[0];
+                const settings = config.settings;
+                document.getElementById("content").innerHTML = `
+                    <h3>Gerätekonfiguration</h3>
+                    <p><strong>Hostname:</strong> ${settings.hostname}</p>
+                    <p><strong>Standard-Ballgeschwindigkeit:</strong> ${settings.default_ballspeed}</p>
+                    <p><strong>Netzwerkserver Autostart:</strong> ${settings.net_webserver_autostart ? "Ja" : "Nein"}</p>
+                    <p><strong>Max. Ballfrequenz:</strong> ${settings.max_ball_frequency}</p>
+                    <p><strong>Standard Seitenrotation:</strong> ${settings.default_sidespin}</p>
+                    <p><strong>Netzwerkserver Port:</strong> ${settings.net_webserver_port}</p>
+                    <p><strong>Standard Ball Feeder Zyklus:</strong> ${settings.default_ball_feeder_cycle.join(", ")}</p>
+                    <p><strong>Standard Ball Feeder Mount Index:</strong> ${settings.default_ball_feeder_mount_index}</p>
+                    <p><strong>Standard Topspin:</strong> ${settings.default_topspin}</p>
+                    <h3>Zusätzliche Konfiguration</h3>
+                    <p><strong>Ball Feeders:</strong> ${config.ballfeeders}</p>
+                    <p><strong>Ball Drivers:</strong> ${config.balldrivers}</p>
+                    <p><strong>Ball Stirrers:</strong> ${config.ballstirrers}</p>
+                `;
+            });
+        }
+    </script>
+</body>
+</html>

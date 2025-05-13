@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Geräteverwaltung</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px; }
+        .container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); max-width: 400px; margin: auto; }
+        h2 { margin-bottom: 10px; }
+        .error { color: red; }
+        .menu { display: flex; gap: 10px; margin-bottom: 20px; }
+        .menu button { padding: 10px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Geräteverwaltung</h2>
+        <div class="menu">
+            <button onclick="showStatus()">Status</button>
+            <button onclick="showConfig()">Konfiguration</button>
+        </div>
+        <div id="content">Wähle eine Option...</div>
+    </div>
+
+    <script>
+        async function fetchData(url, callback) {
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error("Fehler beim Abrufen der Daten");
+                const jsonData = await response.json();
+                callback(jsonData);
+            } catch (err) {
+                document.getElementById("content").innerHTML = `<p class="error">Fehler: ${err.message}</p>`;
+            }
+        }
+
+        function showStatus() {
+            fetchData("http://192.168.188.103/api/v1/system/status", (jsonData) => {
+                const config = jsonData.data[0];
+                document.getElementById("content").innerHTML = `
+                    <h3>Gerätestatus</h3>
+                    <p><strong>Status:</strong> ${config.status}</p>
+                    <p><strong>Modus:</strong> ${config.mode}</p>
+                    <h3>Shot Cycle</h3>
+                    <p><strong>Nächster Schuss Index:</strong> ${config.shot_cycle.next_shot_index}</p>
+                    <p><strong>Max. Schuss Index:</strong> ${config.shot_cycle.max_shot_index}</p>
+                    <p><strong>Pausenzeit bis zum nächsten Schuss:</strong> ${config.shot_cycle.pause_to_next_shot} Sekunden</p>
+                `;
+            });
+        }
+
+        function showConfig() {
+            fetchData("http://192.168.188.103/api/v1/system/config", (jsonData) => {
+                const config = jsonData.data[0];
+                const settings = config.settings;
+                let settingsHTML = "<h3>Gerätekonfiguration</h3>";
+
+                for (const key in settings) {
+                    settingsHTML += `<p><strong>${key.replace(/_/g, ' ')}:</strong> ${JSON.stringify(settings[key])}</p>`;
+                }
+                
+                let deviceList = "<h3>Zusätzliche Konfiguration</h3>";
+                function createDeviceLinks(type, count) {
+                    let html = `<h4>${type}:</h4>`;
+                    for (let i = 0; i < count; i++) {
+                        html += `<p><a href="#" onclick="showDeviceConfig('${type.toLowerCase().replace(/\s+/g, "")}', ${i})">${type} ${i}</a></p>`;
+                    }
+                    return html;
+                }
+
+                deviceList += createDeviceLinks("BallFeeders", config.ballfeeders);
+                deviceList += createDeviceLinks("BallDrivers", config.balldrivers);
+                deviceList += createDeviceLinks("BallStirrers", config.ballstirrers);
+
+                document.getElementById("content").innerHTML = settingsHTML + deviceList;
+            });
+        }
+
+        function showDeviceConfig(type, index) {
+            fetchData(`http://192.168.188.103/api/v1/${type}/${index}/config`, (jsonData) => {
+                const config = jsonData.data[0];
+                let content = `<h3>${type} ${index} Konfiguration</h3>`;
+
+                for (const key in config) {
+                    if (typeof config[key] === "object") {
+                        content += `<h4>${key.replace(/_/g, ' ')}:</h4>`;
+                        if (Array.isArray(config[key])) {
+                            content += config[key].map((item, i) => `<p>${key} ${i}: ${JSON.stringify(item)}</p>`).join('');
+                        } else {
+                            for (const subKey in config[key]) {
+                                content += `<p><strong>${subKey.replace(/_/g, ' ')}:</strong> ${JSON.stringify(config[key][subKey])}</p>`;
+                            }
+                        }
+                    } else {
+                        content += `<p><strong>${key.replace(/_/g, ' ')}:</strong> ${config[key]}</p>`;
+                    }
+                }
+
+                content += `<button onclick="showConfig()">Zurück</button>`;
+                document.getElementById("content").innerHTML = content;
+            });
+        }
+    </script>
+</body>
+</html>

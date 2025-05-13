@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Maschinensteuerung</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f4;
+      margin: 0; padding: 0;
+    }
+    header {
+      background-color: #0078D4; color: white; padding: 10px; text-align: center;
+    }
+    nav {
+      display: flex; justify-content: center; gap: 10px; padding: 10px; background-color: #eaeaea;
+    }
+    /* Standardbutton */
+    nav button {
+      padding: 10px 20px;
+      cursor: pointer;
+      background-color: white;
+      color: black;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+    
+    /* Aktiver Button */
+    nav button.active {
+      background-color: #0078D4;
+      color: white;
+    }
+	
+    /* Allgemeiner Stil für alle Buttons */
+    button {
+      padding: 10px 15px;
+      border: 1px solid #0078D4;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 14px;
+      margin: 10px;
+    }
+    
+    /* Bearbeiten- und Aktions-Buttons */
+    .edit-btn, .action-btn {
+      background-color: #0078D4;
+      color: white;
+    }
+    
+    .edit-btn:hover, .action-btn:hover {
+      background-color: #005A9E;
+    }
+    
+    /* Abbrechen-Button (spezielle Farbe) */
+    .cancel-btn {
+      background-color: #eaeaea;
+      color: black;
+    }
+    
+    .cancel-btn:hover {
+      background-color: #d6d6d6;
+    }
+
+    .button-area {
+      border: 1px solid #ccc;
+      padding: 10px;
+      background-color: #d1d1d1;
+      margin-top: 15px;
+    }
+
+    .edit-area {
+      border: 1px solid #ccc;
+      padding: 10px;
+      background-color: #f9f9f9;
+      margin-top: 15px;
+    }
+
+    .display-area {
+      border: 1px solid #ccc;
+      padding: 10px;
+      background-color: #f9f9f9;
+      margin-top: 15px;
+    }
+
+    .status-bar {
+      position: absolute; top: 10px; right: 10px; background: white; padding: 10px; border-radius: 5px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.2);
+    }
+    .status-bar p { margin: 5px 0; font-size: 14px; }
+    .content { margin: 20px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Maschinensteuerung</h1>
+  </header>
+  <nav>
+    <button class="nav-btn" data-mode="configuration" onclick="selectMode('configuration')">Configuration</button>
+    <button class="nav-btn" data-mode="continuous" onclick="selectMode('continuous')">Continuous</button>
+    <button class="nav-btn" data-mode="program" onclick="selectMode('program')">Program</button>
+  </nav>
+  <div class="status-bar" id="status-panel">
+    <h3>Status</h3>
+    <p id="status">Lädt...</p>
+  </div>
+  <div id="errorModal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closeErrorModal()">&times;</span>
+      <p id="errorMessage"></p>
+    </div>
+  </div>
+
+  <div class="content" id="content">
+    <!-- Dynamische Inhalte -->
+  </div>
+  <script>
+    // Globale Hostadresse und Port für die API
+    const API_HOST = "http://192.168.188.103";
+    const API_PORT = ""; // Angabe mit ":8080" oder leer lassen, wenn kein spezifischer Port verwendet wird
+
+    // Mapping für Status- und Modus-Codes
+    const statusMapping = {
+      status: {
+        0: "IDLE",
+        1: "PREPARING",
+        2: "PLAYING",
+        3: "PAUSED",
+        9: "STOPPING",
+        99: "ERROR"
+      },
+      mode: {
+        0: "CONTINUOUS",
+        1: "PROGRAM",
+        2: "CONFIGURATION"
+      }
+    };
+
+    // Globale Variablen für Editiermodus
+    let systemEditMode = false;
+    let compEditMode = false;
+    let previousSystemSettings = {}; // Wird beim Eintritt in den System-Editiermodus gesetzt
+    let previousCompSettings = {};   // Wird beim Eintritt in den Komponenten-Editiermodus gesetzt
+
+    // Hilfsfunktion für API-Aufrufe (GET und andere Methoden)
+    async function fetchData(endpoint, callback, options = {}) {
+      const url = `${API_HOST}${API_PORT}${endpoint}`;
+      try {
+        const response = await fetch(url, {
+          method: options.method || "GET", // Standard ist GET
+          headers: { "Content-Type": "application/json", ...options.headers },
+          body: options.body ? JSON.stringify(options.body) : undefined
+        });
+        if (!response.ok) throw new Error(await response.text()); // Fehler-Details auslesen
+        const jsonData = await response.json();
+        if (callback) callback(jsonData);
+        return jsonData; // Liefert Daten zurück, falls benötigt
+      } catch (err) {
+        showErrorModal(err.message);
+      }
+    }
+
+    // Fehleranzeige als modales Popup
+    function showErrorModal(message) {
+      document.getElementById("errorMessage").innerHTML = message;
+      document.getElementById("errorModal").style.display = "block";
+    }
+    function closeErrorModal() {
+      document.getElementById("errorModal").style.display = "none";
+    }
+
+    // Generische, rekursive Funktion zur Anzeige von JSON-Daten
+    function renderJson(data) {
+      if (typeof data === "object" && data !== null) {
+        // Wenn das Objekt ein Array ist
+        if (Array.isArray(data)) {
+          let html = "<ul>";
+          data.forEach((item, index) => {
+            html += `<li><strong>${index}:</strong> ${renderJson(item)}</li>`;
+          });
+          html += "</ul>";
+          return html;
+        } else {
+          // Wenn das Objekt ein reguläres Objekt ist
+          let html = "<ul>";
+          for (const [key, value] of Object.entries(data)) {
+            html += `<li><strong>${key}:</strong> ${renderJson(value)}</li>`;
+          }
+          html += "</ul>";
+          return html;
+        }
+      }
+      // Wenn der Wert kein Objekt ist, direkt anzeigen
+      return data !== null ? data.toString() : "null";
+    }
+
+    /* STATUS-SEITE:
+       Übersetzt Status- und Moduswerte anhand des Mappings */
+    function showStatus() {
+      fetchData("/api/v1/system/status", (data) => {
+        const status = data.data[0];
+        let html = "<h3>Gerätestatus</h3>";
+        // Prüfe, ob der Modus als Zahl oder String vorliegt:
+        const modeVal = status.mode;
+        const modeText = statusMapping.mode[modeVal] || statusMapping.mode[Number(modeVal)] || modeVal;
+        html += "<p><strong>Modus:</strong> " + modeText + "</p>";
+        html += "<p><strong>Status:</strong> " + (statusMapping.status[status.status] || status.status) + "</p>";
+        if (status.shot_cycle) {
+          html += "<p><strong>Nächster Schuss Index:</strong> " + status.shot_cycle.next_shot_index + "</p>";
+          html += "<p><strong>Max. Schuss Index:</strong> " + status.shot_cycle.max_shot_index + "</p>";
+          html += "<p><strong>Pausenzeit bis zum nächsten Schuss:</strong> " + status.shot_cycle.pause_to_next_shot + " Sekunden</p>";
+        }
+        document.getElementById("status-panel").innerHTML = html;
+      });
+    }
+
+    /* SYSTEMKONFIGURATION:
+       Zeigt Systemeinstellungen und listet Komponententypen als Links */
+    function showSystemConfig() {
+      fetchData("/api/v1/system/config", (data) => {
+        const sysConfig = data.data[0];
+        const settings = sysConfig.settings;
+        let html = "<h3>Gerätekonfiguration</h3>";
+        // Wenn nicht im Editiermodus: aktiver "Bearbeiten"-Button
+        if (!systemEditMode) {
+          html += `<button onclick="enterSystemEditMode()">Bearbeiten</button>`;
+        } else {
+          // Im Editiermodus: "Übernehmen" (initial deaktiviert) und "Abbrechen"
+          html += `<button id="systemSaveBtn" onclick="saveSystemConfig()" disabled>Übernehmen</button> `;
+          html += `<button onclick="cancelSystemEdit()">Abbrechen</button>`;
+        }
+        // Beim Eintritt in den Editiermodus einmalig die aktuellen Werte speichern
+        if (systemEditMode && Object.keys(previousSystemSettings).length === 0) {
+          previousSystemSettings = JSON.parse(JSON.stringify(settings));
+        }
+        for (const [key, value] of Object.entries(settings)) {
+          if (systemEditMode) {
+            html += `<p><strong>${key}:</strong> <input class="system-input" id="${key}" value="${value}" onchange="handleSystemInputChange()"></p>`;
+          } else {
+            html += `<p><strong>${key}:</strong> ${value}</p>`;
+          }
+        }
+        html += "<h3>Komponententypen</h3>";
+        const compTypes = [
+          { type: "BallFeeders", count: sysConfig.ballfeeders },
+          { type: "BallDrivers", count: sysConfig.balldrivers },
+          { type: "BallStirrers", count: sysConfig.ballstirrers }
+        ];
+        compTypes.forEach(comp => {
+          html += `<h4>${comp.type}:</h4>`;
+          for (let i = 0; i < comp.count; i++) {
+            html += `<p><a href="#" onclick="showComponentDetail('${comp.type.toLowerCase()}', ${i})">${comp.type} ${i}</a></p>`;
+          }
+        });
+        document.getElementById("content").innerHTML = html;
+        if (systemEditMode) handleSystemInputChange();
+      });
+    }
+
+    // Wechselt in den System-Editiermodus und speichert die aktuellen Werte
+    function enterSystemEditMode() {
+      systemEditMode = true;
+      // Leere previousSystemSettings, damit beim erneuten Aufruf die Werte gespeichert werden
+      previousSystemSettings = {};
+      showSystemConfig();
+    }
+
+    // Vergleicht Systemeingaben und aktiviert/deaktiviert den Übernehmen-Button
+    function handleSystemInputChange() {
+      let changesDetected = false;
+      const inputs = document.querySelectorAll(".system-input");
+      inputs.forEach(input => {
+        if (input.value != previousSystemSettings[input.id]) {
+          changesDetected = true;
+        }
+      });
+      document.getElementById("systemSaveBtn").disabled = !changesDetected;
+    }
+
+    function cancelSystemEdit() {
+      systemEditMode = false;
+      previousSystemSettings = {};
+      showSystemConfig();
+    }
+
+    // Generische Funktion zum Speichern von Konfigurationen
+    async function saveConfig(endpoint, updatedSettings, successCallback) {
+      try {
+        // Korrekte Einbettung der aktualisierten Daten in das erwartete JSON-Format
+        const payload = {
+          data: [{
+            settings: updatedSettings // Aktualisierte Einstellungen werden hier eingebettet
+          }]
+        };
+        const url = `${API_HOST}${API_PORT}${endpoint}`;
+        const response = await fetch(url, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+    
+        if (response.ok) {
+          alert("Konfiguration erfolgreich übernommen.");
+          if (successCallback) {
+            successCallback();
+          }
+        } else {
+          const errorText = await response.text();
+          showErrorModal("Fehler beim Speichern der Konfiguration: " + errorText);
+        }
+      } catch (error) {
+        showErrorModal("Es gab ein Problem beim Speichern der Konfiguration.");
+      }
+    }
+
+    async function saveSystemConfig() {
+      const updated = {};
+      const inputs = document.querySelectorAll(".system-input");
+      inputs.forEach(input => {
+        updated[input.id] = input.value;
+      });
+    
+      const endpoint = "/api/v1/system/config";
+      saveConfig(endpoint, updated, () => {
+        systemEditMode = false;
+        previousSystemSettings = {};
+        showSystemConfig();
+      });
+    }
+
+    /* KOMONENTENSEITEN:
+       Zeigt Detailkonfiguration einer Komponente, formatiert Arrays als Tabellen,
+       inkl. Editiermodus mit Übernehmen/Abbrechen und Zurück-Button */
+    function showComponentDetail(type, index) {
+      const endpoint = `/api/v1/${type}/${index}/config`;
+      fetchData(endpoint, (data) => {
+        const compConfig = data.data[0];
+        console.log(compConfig)
+        let html = `<button class="back-btn" style="margin-bottom: 10px;" onclick="showSystemConfig()">Zurück</button>`;
+        html += `<h3>Komponentenkonfiguration: ${type} ${index}</h3>`;
+            
+        // Start/Stop-Bereich mit Klassen
+        html += `<div style="margin-bottom: 20px; padding: 10px; border-bottom: 1px solid #ccc;">`;
+        html += `<button class="action-btn" onclick="startComponent('${type}', ${index})">Start</button>`;
+        html += `<button class="action-btn" onclick="stopComponent('${type}', ${index})">Stop</button>`;
+        html += `</div>`;
+    
+        // Konfigurationsdetails
+        html += `<div style="margin-top: 20px;">`;
+        if (!compEditMode) {
+            html += `<div class="button-area" style="border: 1px solid #ccc; padding: 10px; margin: 10px 0;">`;
+            html += `<button class="edit-btn" onclick="enterComponentEditMode('${type}', ${index})">Bearbeiten</button>`;
+            html += `</div>`;
+            html += `<div class="display-area" style="border: 1px solid #ccc; padding: 10px; margin: 10px 0;">`;
+            html += `<h4>Bearbeiten</h4>`;
+        } else {
+          html += `<div class="button-area" style="border: 1px solid #ccc; padding: 10px; margin: 10px 0;">`;
+          html += `<button class="edit-btn" id="compSaveBtn" onclick="saveComponentConfig('${type}', ${index})" disabled>Speichern</button>`;
+          html += `<button class="cancel-btn" onclick="cancelComponentEdit('${type}', ${index})">Abbrechen</button>`;
+          html += `</div>`;
+          html += `<div class="edit-area" style="border: 1px solid #ccc; padding: 10px; margin: 10px 0;">`;
+          html += `<h4>Bearbeiten</h4>`;
+        }
+        if (!compConfig || Object.keys(compConfig).length === 0) {
+          html += `<p>Keine Konfigurationsdaten verfügbar.</p>`;
+        } else {
+          for (const [key, value] of Object.entries(compConfig)) {
+            html += `<p><strong>${key}:</strong> ${compEditMode ? `<input class="comp-input" id="${key}" value="${value}" onchange="handleComponentInputChange('${type}', ${index})">` : value}</p>`;
+          }
+        }
+        html += `</div>`;
+        html += `</div>`;
+    
+        document.getElementById("content").innerHTML = html;
+        if (compEditMode) handleComponentInputChange(type, index);
+      });
+    }
+    
+    async function startComponent(type, index) {
+      const endpoint = `/api/v1/${type}/${index}/start`;
+      fetchData(endpoint, null, { method: "POST" })
+        .then(() => alert(`Der ${type} ${index} wurde erfolgreich gestartet.`))
+        .catch((error) => showErrorModal(`Fehler beim Starten der Komponente: ${error}`));
+    }
+    
+    async function stopComponent(type, index) {
+      const endpoint = `/api/v1/${type}/${index}/stop`;
+      fetchData(endpoint, null, { method: "POST" })
+        .then(() => alert(`Der ${type} ${index} wurde erfolgreich gestoppt.`))
+        .catch((error) => showErrorModal(`Fehler beim Stoppen der Komponente: ${error}`));
+    }
+
+    // Umschalten in den Editiermodus für eine Komponente
+    function enterComponentEditMode(type, index) {
+      compEditMode = true;
+      previousCompSettings = {}; // Leeren, damit beim ersten Eintritt gespeichert wird
+      showComponentDetail(type, index);
+    }
+
+    // Vergleicht Komponenteneingaben und aktiviert/deaktiviert den Übernehmen-Button
+    function handleComponentInputChange(type, index) {
+      let changesDetected = false;
+      const inputs = document.querySelectorAll(".comp-input");
+      inputs.forEach(input => {
+        // Einfacher Stringvergleich; ggf. kann hier noch differenzierter verglichen werden
+        if (input.value != previousCompSettings[input.id.split("_")[0]]) {
+          changesDetected = true;
+        }
+      });
+      document.getElementById("compSaveBtn").disabled = !changesDetected;
+    }
+
+    function cancelComponentEdit(type, index) {
+      compEditMode = false;
+      previousCompSettings = {};
+      showComponentDetail(type, index);
+    }
+
+    // Speichert die Konfiguration einer Komponente per PUT
+    async function saveComponentConfig(type, index) {
+      const updated = {};
+      const inputs = document.querySelectorAll(".comp-input");
+      inputs.forEach(input => {
+        const [key, i, col] = input.id.split("_");
+        if (!updated[key]) updated[key] = Array.isArray(previousCompSettings[key]) ? [...previousCompSettings[key]] : {};
+        if (col) {
+          updated[key][i] = updated[key][i] || {};
+          updated[key][i][col] = input.value;
+        } else {
+          updated[key] = input.value;
+        }
+      });
+
+      const endpoint = `/api/v1/${type}/${index}/config`;
+      saveConfig(endpoint, updated, () => {
+        compEditMode = false;
+        previousCompSettings = {};
+        showComponentDetail(type, index);
+      });
+    }
+	
+    // Status-Bereich aktualisieren
+    async function updateStatus() {
+      showStatus();
+    }
+
+
+    // Modus auswählen
+    function selectMode(mode) {
+      const buttons = document.querySelectorAll("nav button");
+      buttons.forEach(button => button.classList.remove("active")); // Standard zurücksetzen
+      const activeButton = document.querySelector(`button[data-mode="${mode}"]`);
+      activeButton.classList.add("active"); // Aktiven Button hervorheben
+    
+      // Modus-Inhalte aktualisieren...
+      const contentDiv = document.getElementById("content");
+      contentDiv.innerHTML = `<h2>${mode.charAt(0).toUpperCase() + mode.slice(1)} Modus</h2>`;
+      if (mode === 'configuration') {
+        showSystemConfig();
+      } else if (mode === 'continuous') {
+        contentDiv.innerHTML += `<p>Continuous Modus wird implementiert...</p>`;
+      } else if (mode === 'program') {
+        contentDiv.innerHTML += `<p>Program Modus wird implementiert...</p>`;
+      }
+    }
+    
+    // Status alle 1 Sekunde aktualisieren
+    setInterval(updateStatus, 10000);
+
+    // Beim Start auf Configuration setzen
+    selectMode('configuration');
+  </script>
+</body>
+</html>

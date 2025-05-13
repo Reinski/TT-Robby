@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerätekonfiguration</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px; }
+        .container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); max-width: 400px; margin: auto; }
+        h2 { margin-bottom: 10px; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Gerätestatus</h2>
+        <div id="config">Lade Statusinformationen...</div>
+    </div>
+
+    <script>
+        const enums = {
+            "status": {
+                "0": "IDLE",
+                "1": "PREPARING",
+                "2": "PLAYING",
+                "3": "PAUSED",
+                "9": "STOPPING",
+                "99": "ERROR",
+            },
+            "mode": {
+                "0": "CONTINUOUS",
+                "1": "PROGRAM",
+                "2": "CONFIGURATION",
+            }
+        };
+        const apiUrl = "http://192.168.188.103/api/v1/system/status";
+
+
+        function getEnumText(category, value) {
+            console.log(`getEnumText aufgerufen mit: category=${category}, value=${value}`); // Debugging
+            if (enums[category] && enums[category][value] !== undefined) {
+                console.log(`Übersetzter Wert: ${enums[category][value]}`); // Debugging
+                return enums[category][value];
+            }
+            console.warn(`Kein Enum-Wert gefunden für ${category}: ${value}`);
+            return value;
+        }
+
+        async function fetchConfig() {
+            try {
+                const response = await fetch(apiUrl);
+                if (!response.ok) throw new Error("Fehler beim Abrufen der Daten");
+                const jsonData = await response.json();
+                const config = jsonData.data[0];
+                
+                document.getElementById("config").innerHTML = `
+                    <p><strong>Status:</strong> ${getEnumText("status", config.status)}</p>
+                    <p><strong>Modus:</strong> ${getEnumText("mode", config.mode)}</p>
+                    <h3>Shot Cycle</h3>
+                    <p><strong>Nächster Schuss Index:</strong> ${config.shot_cycle.next_shot_index}</p>
+                    <p><strong>Max. Schuss Index:</strong> ${config.shot_cycle.max_shot_index}</p>
+                    <p><strong>Pausenzeit bis zum nächsten Schuss:</strong> ${config.shot_cycle.pause_to_next_shot} Sekunden</p>
+                `;
+            } catch (err) {
+                document.getElementById("config").innerHTML = `<p class="error">Fehler: ${err.message}</p>`;
+            }
+        }
+
+        async function init() {
+            fetchConfig();
+            setInterval(fetchConfig, 5000);
+        }
+
+        init();
+    </script>
+</body>
+</html>
