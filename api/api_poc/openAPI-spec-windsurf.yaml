@@ -1,0 +1,497 @@
+openapi: 3.0.0
+
+info:
+  title: TT-Robby Control API
+  version: 1.0.0
+  description: REST API for configuring and controlling machine components such as ballfeeders, balldrivers, and ballstirrers.
+
+servers:
+  - url: "{scheme}://{host}:{port}/api/v1"
+    variables:
+      scheme:
+        default: http
+      host:
+        default: 127.0.0.1
+      port:
+        default: "80"
+
+paths:
+  /system/status:
+    get:
+      summary: Retrieve system status
+      description: Fetches status data for the machine.
+      responses:
+        '200':
+          description: Successfully retrieved system status data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MachineStatusResponse'
+
+  /system/config:
+    get:
+      summary: Retrieve system configuration data
+      description: Fetches configuration data for the system.
+      responses:
+        '200':
+          description: Successfully retrieved system configuration data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MachineSettingsResponse'
+
+    post:
+      summary: Update system configuration data
+      description: Updates the configuration data for the system.
+      requestBody:
+        description: The complete updated configuration data for the system.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MachineSettingsResponse'
+      responses:
+        '200':
+          description: Successfully updated system configuration data.
+
+  /balldrivers/config:
+    get:
+      summary: Retrieve full balldriver configuration data
+      description: Fetches configuration data for all balldrivers.
+      responses:
+        '200':
+          description: Successfully retrieved balldriver configuration data.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BalldriverResponse'
+
+    post:
+      summary: Update balldriver configuration
+      description: Updates the configuration data for all balldrivers at once, replacing the existing ones.
+      requestBody:
+        description: The complete updated configuration data for all balldrivers.
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/BalldriverResponse'
+      responses:
+        '200':
+          description: Successfully updated balldriver configuration.
+
+  /balldrivers/{index}/config:
+    get:
+      summary: Retrieve balldriver configuration data
+      description: Fetches configuration data for a specific balldriver.
+      parameters:
+        - name: index
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Index of the balldriver.
+      responses:
+        '200':
+          description: Successfully retrieved balldriver configuration data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BalldriverResponse'
+
+    post:
+      summary: Update balldriver configuration
+      description: Updates the configuration data for a specific balldriver.
+      parameters:
+        - name: index
+          required: true
+          in: path
+          schema:
+            type: integer
+          description: Index of the balldriver.
+      requestBody:
+        description: The complete updated configuration data for the balldriver.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BalldriverConfig'
+      responses:
+        '200':
+          description: Successfully updated balldriver configuration.
+
+  /ballfeeders/config:
+    get:
+      summary: Retrieve the full ballfeeder configuration data
+      description: Fetches configuration data for all ballfeeders.
+      responses:
+        '200':
+          description: Successfully retrieved ballfeeder configuration data.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BallFeederResponse'
+
+    post:
+      summary: Update ballfeeder configuration
+      description: Updates the configuration data for all ballfeeders.
+      requestBody:
+        description: The complete updated configuration data for all ballfeeders.
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/BallFeederResponse'
+      responses:
+        '200':
+          description: Successfully updated ballfeeder configuration.
+
+  /ballfeeders/{index}/config:
+    get:
+      summary: Retrieve ballfeeder configuration data
+      description: Fetches configuration data for a specific ballfeeder.
+      parameters:
+        - name: index
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Index of the ballfeeder.
+      responses:
+        '200':
+          description: Successfully retrieved ballfeeder configuration data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BallFeederResponse'
+
+    post:
+      summary: Update ballfeeder configuration
+      description: Updates the configuration data for a specific ballfeeder.
+      parameters:
+        - name: index
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Index of the ballfeeder.
+      requestBody:
+        description: The complete updated configuration data for the ballfeeder.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BallFeederResponse'
+      responses:
+        '200':
+          description: Successfully updated ballfeeder configuration.
+
+  /ballstirrers/config:
+    get:
+      summary: Retrieve the full ballstirrer configuration data
+      description: Fetches configuration data for all ballstirrers.
+      responses:
+        '200':
+          description: Successfully retrieved ballstirrer configuration data.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/BallStirrerResponse'
+
+    post:
+      summary: Update ballstirrer configuration
+      description: Updates the configuration data for all ballstirrers.
+      requestBody:
+        description: The complete updated configuration data for all ballstirrers.
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/BallStirrerResponse'
+      responses:
+        '200':
+          description: Successfully updated ballstirrer configuration.
+
+  /ballstirrers/{index}/config:
+    get:
+      summary: Retrieve ballstirrer configuration data
+      description: Fetches configuration data for a specific ballstirrer.
+      parameters:
+        - name: index
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Index of the ballstirrer.
+      responses:
+        '200':
+          description: Successfully retrieved ballstirrer configuration data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BallStirrerResponse'
+
+    post:
+      summary: Update ballstirrer configuration
+      description: Updates the configuration data for a specific ballstirrer.
+      parameters:
+        - name: index
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Index of the ballstirrer.
+      requestBody:
+        description: The complete updated configuration data for the ballstirrer.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BallStirrerResponse'
+      responses:
+        '200':
+          description: Successfully updated ballstirrer configuration.
+
+components:
+  schemas:
+    Integer:
+      type: integer
+
+    MotorType:
+      type: string
+      enum:
+        - StepMotorPIO
+        - Sg92r
+
+    StepMotorConfig:
+      type: object
+      properties:
+        pio_block_index:
+          $ref: '#/components/schemas/Integer'
+        inner_motor_steps:
+          $ref: '#/components/schemas/Integer'
+        consecutive_pins:
+          $ref: '#/components/schemas/Integer'
+        gear_ratio:
+          $ref: '#/components/schemas/Integer'
+        runner_freq:
+          $ref: '#/components/schemas/Integer'
+        starting_gp_pin:
+          $ref: '#/components/schemas/Integer'
+        correction_steps:
+          $ref: '#/components/schemas/Integer'
+        counter_freq:
+          $ref: '#/components/schemas/Integer'
+      required:
+        - pio_block_index
+        - inner_motor_steps
+        - consecutive_pins
+        - gear_ratio
+        - runner_freq
+        - starting_gp_pin
+        - correction_steps
+        - counter_freq
+
+    Sg92rConfig:
+      type: object
+      properties:
+        motor_number:
+          $ref: '#/components/schemas/Integer'
+        halfspan_angle:
+          $ref: '#/components/schemas/Integer'
+        t_low:
+          type: number
+        t_high:
+          type: number
+        freq:
+          $ref: '#/components/schemas/Integer'
+        control_pin:
+          $ref: '#/components/schemas/Integer'
+      required:
+        - motor_number
+        - halfspan_angle
+        - t_low
+        - t_high
+        - freq
+        - control_pin
+
+    BallStirrerResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                $ref: '#/components/schemas/MotorType'
+              config:
+                oneOf:
+                  - $ref: '#/components/schemas/StepMotorConfig'
+                  - $ref: '#/components/schemas/Sg92rConfig'
+            required:
+              - type
+              - config
+
+    BallFeederResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                $ref: '#/components/schemas/MotorType'
+              config:
+                oneOf:
+                  - $ref: '#/components/schemas/StepMotorConfig'
+                  - $ref: '#/components/schemas/Sg92rConfig'
+            required:
+              - type
+              - config
+
+    MachineSettings:
+      type: object
+      properties:
+        default_ballspeed:
+          type: number
+        net_webserver_autostart:
+          type: boolean
+        max_ball_frequency:
+          type: number
+        default_sidespin:
+          type: number
+        net_webserver_port:
+          type: integer
+        hostname:
+          type: string
+        default_ball_feeder_cycle:
+          type: array
+          items:
+            type: integer
+        default_ball_feeder_mount_index:
+          type: integer
+        default_topspin:
+          type: number
+
+    Shot:
+      type: object
+      properties:
+        sidespin:
+          type: number
+        h_angle:
+          type: integer
+        speed:
+          type: number
+        v_angle:
+          type: integer
+        topspin:
+          type: number
+        pause:
+          type: number
+
+    ShotCycle:
+      type: object
+      properties:
+        shots:
+          type: array
+          items:
+            $ref: '#/components/schemas/Shot'
+
+    MachineConfig:
+      type: object
+      properties:
+        settings:
+          $ref: '#/components/schemas/MachineSettings'
+        shot_cycle:
+          $ref: '#/components/schemas/ShotCycle'
+        ballfeeders:
+          type: integer
+        balldrivers:
+          type: integer
+        ballstirrers:
+          type: integer
+
+    MachineStatus:
+      type: object
+      properties:
+        mode:
+          type: integer
+        status:
+          type: integer
+        shot_cycle:
+          $ref: '#/components/schemas/ShotCycle'
+
+    MachineSettingsResponse:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/MachineConfig'
+
+    MachineStatusResponse:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/MachineStatus'
+
+    DcMotorConfig:
+      type: object
+      properties:
+        motor_number:
+          type: integer
+        polarity:
+          type: integer
+
+    MotorDriver:
+      type: object
+      properties:
+        sda_pin:
+          type: integer
+        type:
+          type: string
+        i2c_channel:
+          type: integer
+        address:
+          type: integer
+
+    BalldriverConfig:
+      type: object
+      properties:
+        bd_number:
+          type: integer
+        motors:
+          type: array
+          items:
+            $ref: '#/components/schemas/DcMotorConfig'
+        wheel_diameters:
+          type: array
+          items:
+            type: number
+        motor_driver:
+          $ref: '#/components/schemas/MotorDriver'
+        motor_angles:
+          type: array
+          items:
+            type: integer
+
+    BalldriverResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/BalldriverConfig'
+

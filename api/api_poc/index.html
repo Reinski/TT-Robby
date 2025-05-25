@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>TTRobby</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="grid-container">
+    <div id="machine-address"><label for="hosturl">Hostadresse:</label>
+      <input type="text" id="hosturl" pattern="^([a-zA-Z]+)://([a-zA-Z0-9.\-]+):([0-9]+)$">
+      <button id="accept-url" disabled>accept</button>
+      <button id="cancel-url" disabled>cancel</button></div>
+    <div id="machine-status"><span id="machinestatus-placeholder">Machine status not loaded yet</span></div>
+    <header>
+      <h1>TTRobby</h1>
+      <nav>
+        <ul>
+          <li><button class="mode-switcher" data-mode="config">Konfiguration und Kalibrierung</button></li>
+          <li><button class="mode-switcher" data-mode="direct">Direkt-Modus</button></li>
+          <li><button class="mode-switcher" data-mode="program">Programm-Modus</button></li>
+        </ul>
+      </nav>
+    </header>
+    <div id="nav-sidebar">
+    </div>
+    <div id="content-sidebar">
+    </div>
+    <main>
+      <div class="mode-container" id="mode-container">
+        <!-- Hier wird die jeweilige Bedienung des gewählten Modus erfolgen -->
+      </div>
+    </main>
+    <footer id="footer-container">
+      <!-- Fußzeile ist jetzt leer, da die Statuszeile bereits im Header platziert ist -->
+    </footer>
+  </div>
+  <script src="script.js"></script>
+  <script src="hosturl.js"></script>
+</body>
+</html>
