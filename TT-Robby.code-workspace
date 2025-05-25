@@ -2,14 +2,38 @@
 	"folders": [
 		{
 			"path": "."
+		},
+		{
+			"name": "Mpy Remote Workspace",
+			"uri": "pico:"
 		}
-    ],
+	],
 	"settings": {
 		"python.analysis.typeshedPaths": [
 			"~/.micropico-stubs/included"
 		],
 		"python.analysis.extraPaths": [
 			"~/.micropico-stubs/included"
-		]
+		],
+		"micropico.statusbarButtons": [
+			"status",
+			"run",
+			"softreset",
+			"togglepicowfs",
+			"uploadproject"
+		],
+		"micropico.syncFileTypes": [
+			"py",
+			"txt",
+			"log",
+			"json",
+			"xml",
+			"html",
+			"js",
+			"css",
+			"mpy",
+			"secrets"
+		],
+		"micropico.syncFolder": "src"
 	}
 }
