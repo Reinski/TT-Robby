@@ -13,26 +13,32 @@
     },
     "ballfeeders": [
         {
-            "pio_block_index": 0,
-            "inner_motor_steps": 32,
-            "consecutive_pins": 4,
-            "gear_ratio": 64,
-            "runner_freq": 20000,
-            "starting_gp_pin": 2,
-            "correction_steps": -4,
-            "counter_freq": 2000
+            "type": "StepMotorPIO",
+            "config": {
+                "pio_block_index": 0,
+                "inner_motor_steps": 32,
+                "consecutive_pins": 4,
+                "gear_ratio": 64,
+                "runner_freq": 20000,
+                "starting_gp_pin": 2,
+                "correction_steps": -4,
+                "counter_freq": 2000
+            }
         }
     ],
     "ballstirrers": [
         {
-            "pio_block_index": 1,
-            "inner_motor_steps": 32,
-            "consecutive_pins": 4,
-            "gear_ratio": 64,
-            "runner_freq": 20000,
-            "starting_gp_pin": 10,
-            "correction_steps": -4,
-            "counter_freq": 2000
+            "type": "StepMotorPIO",
+            "config": {
+                "pio_block_index": 1,
+                "inner_motor_steps": 32,
+                "consecutive_pins": 4,
+                "gear_ratio": 64,
+                "runner_freq": 20000,
+                "starting_gp_pin": 10,
+                "correction_steps": -4,
+                "counter_freq": 2000
+            }
         }
     ],
     "balldrivers": [
@@ -53,8 +59,8 @@
                 0.04
             ],
             "motor_driver": {
-                "i2c_channel": 1,
-                "sda_pin": 6,
+                "i2c_channel": 0,
+                "sda_pin": 20,
                 "type": "PCA9685",
                 "address": 64
             },
@@ -63,5 +69,7 @@
                 180
             ]
         }
+    ],
+    "rotators": [
     ]
 }
