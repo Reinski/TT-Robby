@@ -7,24 +7,30 @@ from Pca9685 import PCA9685
 class DcMotor():
     MotorDirForward = (0,1)
     MotorDirBackward = (1,0)
-    def __init__(self, driver: PCA9685, motor_number=0, polarity=1, debug=None):
+    def __init__(self, driver: PCA9685, motor_number:int=0, polarity:int=1, debug:bool=False):
         """
         driver: The object for the motor driver
-        motor_number: motor index on the driver board (0 to 3), determining the motor pins
+        motor_number: motor index on the driver board (0 to 3), determining the connection pins and channels.
         polarity: positive value means posititve speeds are in forward direction, negative value reverses this.
         debug: Enable debug output?
         """
+        self.debug = debug
+        if self.debug:
+            print(f"Initializing {__class__.__name__} #{motor_number} with polarity {polarity}.")
+        self.polarity = polarity
         if motor_number<0 or motor_number>3:
             raise Exception(f"Implementation error: Invalid motor number specified for DcMotor ({motor_number})!")
-        self.debug = debug
         self.pwm = driver
         self.motor_number = motor_number
         self.MotorPin = (motor_number*3,motor_number*3+1,motor_number*3+2) #['MA', 0,1,2, 'MB',3,4,5, 'MC',6,7,8, 'MD',9,10,11]
+        if self.debug:
+            print(f"MotorPin set to {self.MotorPin}.")
         """The channel(?) numbers on the driver board used for this motor, e.g. (0,1,2) for motor 0."""
         self.speed = 0
         self._last_speed = 0 
         """stores the last speed different from 0"""
-        self.polarity = polarity
+        if self.debug:
+            print(f"{__class__.__name__}: Init complete.")
 
     def set_speed(self, speed: int):
         """

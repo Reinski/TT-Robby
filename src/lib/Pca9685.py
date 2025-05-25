@@ -40,21 +40,22 @@ class PCA9685:
         sda_pin: GP-pin number on the pico where the motor shield (pca9685) is connected (default: 20)"""
         self.debug = debug
         if self.debug:
-            print(f"Init Pca9685: I2C address pins sda={sda_pin} and scl={sda_pin+1} (channel {i2c_channel})")
-        self.sda_pin = sda_pin
-        self.i2c_channel = i2c_channel
-        self.i2c = I2C(i2c_channel, scl=Pin(sda_pin+1), sda=Pin(sda_pin), freq=100000)
-        if self.debug:
-            print(f"i2c scan: {self.i2c.scan()}") # I2C-Bus-Scan
+            print(f"Init PCA9685: I2C pins sda={sda_pin} and scl={sda_pin+1} (channel {i2c_channel})")
         if not address:
             self.address = 0x40
         else:
             self.address = address
+        self.sda_pin = sda_pin
+        self.i2c_channel = i2c_channel
+        self.i2c = I2C(i2c_channel, scl=Pin(sda_pin+1), sda=Pin(sda_pin), freq=100000)
+        if self.debug:
+            print(f"i2c scan shows these addresses: {[hex(a) for a in self.i2c.scan()]}") # I2C-Bus-Scan
+            print(f"own address={hex(self.address)}")
         if (self.debug):
-            print("Resetting PCA9685")
+            print("Resetting PCA9685 now...")
         self.write(self.__MODE1, 0x00)
         if (self.debug):
-            print("Pca9685 init complete.")
+            print("PCA9685 init complete.")
 	
     def write(self, reg_address, value):
         """Writes an 8-bit value to the specified register/address on the I2C device."""
@@ -66,11 +67,13 @@ class PCA9685:
         """Read an unsigned byte from the I2C device"""
         rdate = self.i2c.readfrom_mem(int(self.address), int(reg), 1)
         if (self.debug):
-            print("I2C: Device 0x%02X returned 0x%02X from reg 0x%02X" % (self.address, int(reg), rdate[0]))
+            print("I2C: Device 0x%02X returned 0x%02X from reg 0x%02X" % (self.address, rdate[0], int(reg)))
         return rdate[0]
 	
-    def setPWMFreq(self, freq: float):
-        """Sets the PWM frequency in Hz on the board."""
+    def setPWMFreq(self, freq: float =50.0):
+        """Sets the PWM frequency in Hz on the board.
+        Parameters:
+        freq: The frequency in Hz (default: 50)."""
         prescaleval = 25000000.0    # 25MHz of the internal clock
         prescaleval /= 4096.0       # 12-bit resolution
         prescaleval /= freq
@@ -115,15 +118,29 @@ class PCA9685:
         self.setPWM(channel, 0, pulse)
     
     def setLevel(self, channel: int, value: int):
-        if (value == 1):
+        """Sets the level/pulse of a PWM channel to either high (1) or low (0).
+        Parameters:
+        channel: The PWM channel to set (0-15).
+        value: 1 for high, 0 for low."""
+        if (value > 0):
               self.setPWM(channel, 0, 4095)
         else:
               self.setPWM(channel, 0, 0)
 
     def getConfigData(self) -> dict:
+        """Returns the configuration data for the PCA9685 as a dictionary."""
         return {
             'type': self.__class__.__name__,
             'address': self.address,
             'i2c_channel': self.i2c_channel,
             'sda_pin': self.sda_pin,
+            'debug': self.debug,
         }
+    def setConfigData(self, data: dict):
+        """Sets the configuration data for the PCA9685 to a limited amount.
+        Parameters:
+        data: A dictionary containing the configuration data."""
+        tmp = data.get('debug')
+        if tmp is not None:
+            self.debug = bool(tmp)
+        return self.getConfigData()

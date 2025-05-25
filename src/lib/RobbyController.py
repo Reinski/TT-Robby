@@ -198,7 +198,7 @@ class RobbyController:
             txt_step = "BallTimer Initialization"
             if self.debug:
                 print("Initializing RobbyController: ", txt_step)
-            self.BallTimer = Timer(0)
+            self.BallTimer = Timer() # type: ignore
             self.BallTimerRunning = False
             self.current_ballfeeder_cycle_index = -1
             """Current index in the ballfeeder cycle. Is -1 if in the waiting position."""

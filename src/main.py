@@ -15,7 +15,10 @@ if __name__ == "__main__":
     # start web server
     try:
         webserver = WebServer(debug=True)
-        controller = RobbyController(no_server=True, debug=True)
+        try:
+            controller = RobbyController(no_server=True, debug=True)
+        except Exception as e:
+            print(f"Cannot initialize RobbyController: {e}")
         webserver.run(controller)
     except KeyboardInterrupt:
         pass
