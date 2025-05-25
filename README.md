@@ -10,7 +10,7 @@ No side-spin, fix ball direction
 - 2 x DC Toy Hobby Motor - 130 Size 4.5V to 9V (~2€ each)
 - 1 x WaveShare DC Motor Driver Module (https://www.waveshare.com/wiki/Pico-Motor-Driver) (~30€)
 - 1 x 28BYJ-48 stepper motor 5V DC + ULN2003 driver board (~2.20€ each)
-- 2 Rubber bands
+- 2 Rubber rings (50x4mm; Diameter approx. 30mm) 
 - Wires + boards
 - 3D printing filament
 ### Max setup
@@ -19,7 +19,7 @@ All currently supported features: Top spin, back spin, side-spin, fix ball direc
 - 3 x DC Toy Hobby Motor - 130 Size 4.5V to 9V (~2€ each)
 - 1 x WaveShare DC Motor Driver Module (https://www.waveshare.com/wiki/Pico-Motor-Driver) (~30€)
 - 1 x 28BYJ-48 stepper motor 5V DC + ULN2003 driver board (~2.20€ each)
-- 3 Rubber bands
+- 3 Rubber bands (50x4mm; Diameter approx. 30mm)
 - Wires + boards
 - 3D printing filament
 ## Open points
