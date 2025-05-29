@@ -80,3 +80,6 @@ class BallStirrer:
                     raise ImplementationException(f"BallStirrer #{self.bs_index}: Invalid motor type specified in config data ({mot_cfg['type']})!")
                 motor.setConfigData(mot_cfg)
                 self.motors.append(motor)
+        if self.debug:
+            print(f"BallStirrer initialized with data: {data}")
+            print(f"Resulting config: {self.getConfigData()}")

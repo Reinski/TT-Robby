@@ -55,14 +55,17 @@ class StepMotorPIO:
         self.runner_freq = runner_freq
         self.counter_freq = counter_freq
         self.pio_block_index = min(max(pio_block_index, 0),1)
+        self.adopt_config()
+
+    def adopt_config(self):        
         # derived config
-        self.pins = [Pin(i, Pin.OUT) for i in range(starting_gp_pin, starting_gp_pin + consecutive_pins)]
-        self.full_rotation_steps = ((gear_ratio * inner_motor_steps) + correction_steps) / len(self.pins)  # 64*32 = 2048 steps -> 2048-4 / 4 = 511 (a step is a full cycle for the coils)
+        self.pins = [Pin(i, Pin.OUT) for i in range(self.starting_gp_pin, self.starting_gp_pin + self.consecutive_pins)]
+        self.full_rotation_steps = ((self.gear_ratio * self.inner_motor_steps) + self.correction_steps) / len(self.pins)  # 64*32 = 2048 steps -> 2048-4 / 4 = 511 (a step is a full cycle for the coils)
         self.angle_per_step = 360.0 / self.full_rotation_steps   # 0.7045° per step
         if self.debug:
             print("StepMotorPIO:")
             print(f"  {self.gear_ratio=}")
-            print(f"  {inner_motor_steps=}")
+            print(f"  {self.inner_motor_steps=}")
             print(f"  {self.full_rotation_steps=}")
             print(f"  {self.angle_per_step=}")
             print(f"  {self.pins=}")
@@ -429,8 +432,7 @@ class StepMotorPIO:
         }
     def setConfigData(self, data: dict) -> dict:
         if self.debug:
-            print(f"setConfigData({data=})")
-            print(type(data))
+            print(f"{__class__.__name__}setConfigData({data=})")
         tmp = data.get('starting_gp_pin')
         if tmp is not None:
             self.starting_gp_pin  = int(tmp)
@@ -455,6 +457,7 @@ class StepMotorPIO:
         tmp = data.get('pio_block_index')
         if tmp is not None:
             self.pio_block_index = int(tmp)
+        self.adopt_config()
         return self.getConfigData()
 
 import rp2
