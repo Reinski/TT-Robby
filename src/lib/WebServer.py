@@ -43,27 +43,33 @@ class WebServer:
                                     '^[0-9]+$': {
                                         'start': lambda bd, m: controller.API.bd_set_motor_speed(int(bd), int(m), 50), # start motor with 50% speed
                                         'stop': lambda bd, m: controller.API.bd_set_motor_speed(int(bd), int(m), 0),
-                                        '/default/': lambda bd, m, data: self.set_bd_motor_speed(controller, int(bd), int(m), data),
                                     },
-                                    'all': {
-                                        'speed': lambda bd, data: self.set_bd_motor_speed(controller, int(bd), -1, data),
-                                        '/default/': lambda bd, data: self.set_bd_motor_speed(controller, int(bd), -1, data),
-                                    },
-                                    #'/default/': lambda: controller.ballDriver.getInformation(),
                                 },
-                                #'/default/': lambda: controller.ballDriver.getInformation(),
                             },
                         },
                         'ballstirrers': {
                             '^[0-9]+$': {
-                                'start': lambda bs: controller.ball_stirrers[int(bs)].start(),
-                                'stop': lambda bs: controller.ball_stirrers[int(bs)].stop(),
+                                'start': lambda bs: controller.API.bs_start(int(bs)),
+                                'stop': lambda bs: controller.API.bs_stop(int(bs)),
+                                'motors': {
+                                    '^[0-9]+$': {
+                                        'start': lambda bd, m: controller.API.bs_motor_start(int(bd), int(m)),
+                                        'stop': lambda bd, m: controller.API.bs_motor_stop(int(bd), int(m)),
+                                    },
+                                },
                             },
                         },
                         'ballfeeders': {
                             '^[0-9]+$': {
-                                'extend': lambda bf: controller.ball_feeders[int(bf)].extend(),
-                                'retract': lambda bf: controller.ball_feeders[int(bf)].retract(),
+                                'dispense': lambda bf: controller.ball_feeders[int(bf)].dispense(),
+                                'prepare': lambda bf: controller.ball_feeders[int(bf)].prepare_after_mount(),
+                                'stop': lambda bf: controller.ball_feeders[int(bf)].stop(),
+                                'motors': {
+                                    '^[0-9]+$': {
+                                        'rotate': lambda bf, m, data: controller.API.bf_motor_rotate(int(bf), int(m), 5.0),
+                                        'stop': lambda bf, m: controller.API.bf_motor_stop(int(bf), int(m)),
+                                    }    
+                                },
                             },
                         },
                     }
@@ -104,9 +110,14 @@ class WebServer:
                         },
                         'ballfeeders': {
                             '^[0-9]+$': {
-                                'config': lambda bf, data: controller.ball_feeders[int(bf)].setConfigData(data),
-                                'status': lambda bf: {},
-                                '/default/': lambda bf: {},
+                                'motors': {
+                                    '^[0-9]+$': {
+                                        'rotate': lambda bf, m, data: controller.API.bf_motor_rotate(int(bf), int(m), float(data['angle'])),
+                                        'config': lambda bf, data: controller.ball_feeders[int(bf)].setConfigData(data),
+                                        'status': lambda bf: {},
+                                        '/default/': lambda bf: {},
+                                    },
+                                },
                             },
                         },
                     }

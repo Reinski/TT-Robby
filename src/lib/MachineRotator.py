@@ -1,5 +1,6 @@
 from lib.StepMotorPIO import StepMotorPIO, MODE_COUNTED
 from lib.sg92r import Sg92r
+from lib.RobbyExceptions import ImplementationException
 
 
 class MachineRotator:
@@ -7,13 +8,14 @@ class MachineRotator:
     Defines a joint, rotating the whole machine on a horizontal plane (vertical axis).
     Multiple motors can be used to rotate the machine, however, they must be coordinated/synced properly.
     """
-    def __init__(self, min_angle_deg: float = -90.0, max_angle_deg: float = 90.0, debug: bool=False):
+    def __init__(self, mr_index: int, min_angle_deg: float = -90.0, max_angle_deg: float = 90.0, debug: bool=False):
         self.debug = debug
+        self.mr_index = mr_index
         self.motors = []
         self.motor_angle_factors = []
         """motors which participate in the rotation."""
-        self.min_angle_deg = min(min_angle_deg, max_angle_deg)
-        self.max_angle_deg = max(min_angle_deg, max_angle_deg)
+        self.min_angle_deg = min(float(min_angle_deg), float(max_angle_deg))
+        self.max_angle_deg = max(float(min_angle_deg), float(max_angle_deg))
     
     def add_motor(self, motor, angle_factor: float=1.0):
         """
@@ -41,29 +43,29 @@ class MachineRotator:
 
     def getConfigData(self):
         return {
+            "mr_index": self.mr_index,
+            "debug": self.debug,
             "min_angle_deg": self.min_angle_deg, 
             "max_angle_deg": self.max_angle_deg,
             "motors": [motor.getConfigData() for motor in self.motors],
-            "motor_angle_factors": self.motor_angle_factors,
+            "motor_settings": [{'angle_factor': self.motor_angle_factors[i]} for i in range(len(self.motor_angle_factors))],
         }
     
     def setConfigData(self, data):
-        self.min_angle_deg = data.get("min_angle_deg", -90.0)
-        self.max_angle_deg = data.get("max_angle_deg", 90.0)
+        self.mr_index = int(data.get("mr_index", 0))
+        self.debug = bool(data.get("debug", False))
+        self.min_angle_deg = float(data.get("min_angle_deg", -90.0))
+        self.max_angle_deg = float(data.get("max_angle_deg", 90.0))
         self.motors = []
         for cfg_mot in data["motors"]:
-            cfg = cfg_mot["config"]
             if cfg_mot['type'] == 'StepMotorPIO':
-                motor = StepMotorPIO(mode=MODE_COUNTED, starting_gp_pin=cfg['starting_gp_pin'], consecutive_pins=cfg['consecutive_pins'], pio_block_index=cfg['pio_block_index'], debug=self.debug)
-                motor.inner_motor_steps = cfg['inner_motor_steps']
-                motor.gear_ratio = cfg['gear_ratio']
-                motor.runner_freq = cfg['runner_freq']
-                motor.correction_steps = cfg['correction_steps']
-                motor.counter_freq = cfg['counter_freq']
+                motor = StepMotorPIO(mode=MODE_COUNTED, debug=self.debug)
             elif cfg_mot['type'] == 'Sg92r':
                 motor = Sg92r(debug=self.debug)
-                motor.setConfigData(cfg)
+            else:
+                raise ImplementationException(f"Motor type {cfg_mot['type']} is not implemented in MachineRotator.setConfigData()")
+            motor.setConfigData(cfg_mot)
             self.motors.append(motor)
         self.motor_angle_factors = []
-        for val in data["motor_angle_factors"]:
-            self.motor_angle_factors.append(val)
+        for settings in data["motor_settings"]:
+            self.motor_angle_factors.append(float(settings.get('angle_factor', 1.0)))

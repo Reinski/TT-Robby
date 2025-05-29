@@ -7,6 +7,7 @@ import sys
 if 'micropython' not in sys.version.lower():
     from typing import List, Union
 from BallFeeder import BallFeeder
+import BallFeeder as Bf
 from BallStirrer import BallStirrer
 from MachineRotator import MachineRotator
 from sg92r import Sg92r
@@ -74,6 +75,7 @@ class RobbyController:
            no_server: set to True to prevent webserver from starting
            debug: enable verbose output
         """
+        #TODO: Failing to load some settings should not prevent loading the others.
         print("------------------------------------------------------")
         print(r"  ______ _______      _____       _     _           ")
         print(r" |__   _|__   __|    |  __ \     | |   | |          ")
@@ -141,22 +143,12 @@ class RobbyController:
                 print("Initializing RobbyController: ", txt_step)
             self.ball_feeders: List[BallFeeder] = []
             if KEY_BALL_FEEDERS in settings:
-                for mot_cfg in settings[KEY_BALL_FEEDERS]:
-                    cfg = mot_cfg['config']
-                    if mot_cfg['type'] == 'StepMotorPIO':
-                        motor = StepMotorPIO(mode=MODE_COUNTED, starting_gp_pin=cfg['starting_gp_pin'], consecutive_pins=cfg['consecutive_pins'], pio_block_index=cfg['pio_block_index'], debug=self.debug)
-                        motor.inner_motor_steps = cfg['inner_motor_steps']
-                        motor.gear_ratio = cfg['gear_ratio']
-                        motor.runner_freq = cfg['runner_freq']
-                        motor.correction_steps = cfg['correction_steps']
-                        motor.counter_freq = cfg['counter_freq']
-                    else:
-                        raise NotImplementedError(f"Motor class '{mot_cfg['type']}' has not been implemented yet to be loaded from config!")
-                    feeder = BallFeeder(motor=motor, debug=self.debug)
+                for bf_cfg in settings[KEY_BALL_FEEDERS]:
+                    feeder = Bf.create_from_config(bf_cfg=bf_cfg, bf_index=len(self.ball_feeders), debug=self.debug)
                     self.ball_feeders.append(feeder)
             else:
-                # create one default entry
-                self.ball_feeders.append(BallFeeder(motor=StepMotorPIO(mode=MODE_COUNTED, starting_gp_pin=2, pio_block_index=0, debug=self.debug), debug=self.debug))
+                # create one default entry, using defaults
+                self.ball_feeders.append(BallFeeder(motor=StepMotorPIO(mode=MODE_COUNTED, debug=self.debug), bf_index=0, debug=self.debug))
 
             txt_step = "Ball Stirrers Initialization"
             if self.debug:
@@ -164,23 +156,15 @@ class RobbyController:
                 print("Initializing RobbyController: ", txt_step)
             self.ball_stirrers: List[BallStirrer] = []
             if KEY_BALL_STIRRERS in settings:
-                for cfg_mot in settings[KEY_BALL_STIRRERS]:
-                    cfg = cfg_mot['config']
-                    if cfg_mot['type'] == 'StepMotorPIO':
-                        motor = StepMotorPIO(mode=MODE_PERMANENT, starting_gp_pin=cfg['starting_gp_pin'], consecutive_pins=cfg['consecutive_pins'], pio_block_index=cfg['pio_block_index'], debug=self.debug)
-                        motor.inner_motor_steps = cfg['inner_motor_steps']
-                        motor.gear_ratio = cfg['gear_ratio']
-                        motor.runner_freq = cfg['runner_freq']
-                        motor.correction_steps = cfg['correction_steps']
-                        motor.counter_freq = cfg['counter_freq']
-                    elif cfg_mot['type'] == 'Sg92r':
-                        motor = Sg92r(debug=self.debug)
-                        motor.setConfigData(cfg)
-                    stirrer = BallStirrer(motor, debug=self.debug)
-                    self.ball_stirrers.append(stirrer)
+                for sub_cfg in settings[KEY_BALL_STIRRERS]:
+                    if self.debug:
+                        print(f"BallStirrer config: {sub_cfg}")
+                    bs = BallStirrer(bs_index=len(self.ball_stirrers), motor=None, debug=self.debug)
+                    bs.setConfigData(sub_cfg)
+                    self.ball_stirrers.append(bs)
             else:
                 # create one default entry
-                self.ball_stirrers.append(BallStirrer(motor=StepMotorPIO(mode=MODE_PERMANENT, starting_gp_pin=10, pio_block_index=1, debug=self.debug), debug=self.debug))
+                self.ball_stirrers.append(BallStirrer(bs_index=0, motor=StepMotorPIO(mode=MODE_PERMANENT, debug=self.debug), debug=self.debug))
             
             txt_step = "Machine Rotators Initialization"
             if self.debug:
@@ -189,19 +173,19 @@ class RobbyController:
             self.machine_rotators: List[MachineRotator] = []
             if KEY_MACHINE_ROTATORS in settings:
                 for cfg_rot in settings[KEY_MACHINE_ROTATORS]:
-                    rotator = MachineRotator(debug=self.debug)
+                    rotator = MachineRotator(mr_index=len(self.machine_rotators), debug=self.debug)
                     rotator.setConfigData(cfg_rot)
             else:
                 # create one default entry
-                self.machine_rotators.append(MachineRotator(debug=self.debug))
+                self.machine_rotators.append(MachineRotator(0, debug=self.debug))
 
             txt_step = "BallTimer Initialization"
             if self.debug:
                 print("Initializing RobbyController: ", txt_step)
             self.BallTimer = Timer() # type: ignore
             self.BallTimerRunning = False
-            self.current_ballfeeder_cycle_index = -1
-            """Current index in the ballfeeder cycle. Is -1 if in the waiting position."""
+            self.current_program_index = -1
+            """Current index in the shot cycle. Is -1 if in no program is started."""
             
             txt_step = "ShotCycle Initialization"
             if self.debug:
@@ -237,6 +221,9 @@ class RobbyController:
             print(f"Error during adopting settings, step {txt_step}: {e}")
             raise e
 
+    def _is_any_ballfeeder_busy(self) -> bool:
+        return len([bf for bf in self.ball_feeders if bf.is_busy()]) > 0
+    
     def run(self):
         """Method to keep the controller in memory (endless loop until exception occurs)."""
         sleeptime_ms = 100
@@ -257,7 +244,7 @@ class RobbyController:
                             self.BallTimer.deinit()
                         self.ShotCycle.reset()
                     # the ball feeders will stop when reaching the waiting position, then we can update the status:
-                    if self.current_ballfeeder_cycle_index == -1:
+                    if not self._is_any_ballfeeder_busy():
                         self._status = self._status_requested
 
                 # State transition: * --> PAUSED
@@ -266,7 +253,7 @@ class RobbyController:
                         self.BallTimerRunning = False
                         self.BallTimer.deinit()
                     # the ball feeders will stop when reaching the waiting position, then we update the status:
-                    if self.current_ballfeeder_cycle_index == -1:
+                    if not self._is_any_ballfeeder_busy():
                         self._status = self._status_requested
 
                 # State transition: * --> PLAYING
@@ -277,7 +264,7 @@ class RobbyController:
                         self._start_balldrivers()
                         self._start_stirrers()
                     # the ball feeders should be in the waiting position, then we can update the status:
-                    if self.current_ballfeeder_cycle_index == -1:
+                    if not self._is_any_ballfeeder_busy():
                         self._status = self._status_requested
                         self._start_playing_async()
 
@@ -386,56 +373,36 @@ class RobbyController:
 
     def _stop_feeders(self) -> None:
         i = 0
-        for stepmotor in self.ball_feeders:
+        for bf in self.ball_feeders:
             try:
-                stepmotor.stop()
+                bf.stop()
                 i += 1
             except Exception as e:
                 print(f"Error stopping ball feeder {i}: {e}")
         if self.debug:
             print(f"{i} ball feeders successfully stopped.")
 
-    def _ball_feeder_prepare_after_mount(self) -> None:
+    def _ball_feeder_prepare_after_mount(self, bf_index: int) -> None:
         """Move the ball feeder into waiting position."""
         # Waiting position is after the last step of the ball feeder cycle. 
-        if self.current_ballfeeder_cycle_index >= 0:
-            raise ImplementationException("Ball Feeder is currently operating and cannot be moved into the waiting position!")
+        if bf_index <0 or bf_index >= len(self.ball_feeders):
+            raise InputDataException(f"Ball Feeder index out of range ({bf_index})!")
         if self.debug:
             print(f"Ball Feeder preparing after mount")
-        if self.__general_settings.BallFeederMountIndex >= len(self.ball_feeder_cycle) - 1:
-            # nothing to do (already in waiting position)
-            return
-        self.current_ballfeeder_cycle_index = self.__general_settings.BallFeederMountIndex + 1 # perform the next step
-        for mot in self.ball_feeders:
-            mot.motor.rotate_by_angle(angle=self.ball_feeder_cycle[self.current_ballfeeder_cycle_index], op_complete_callback=self._ball_feeder_next_step)
+        bf = self.ball_feeders[bf_index]
+        if bf.is_busy():
+            raise InvalidOperationException(f"Ball Feeder #{bf_index} is currently operating and cannot be moved into the waiting position!")
+        bf.prepare_after_mount()
 
-    def _release_next_ball(self) -> None:
+    def _release_next_ball(self, bf_index: int) -> None:
         """Trigger the feeder cycle for the next ball"""
-        if self.current_ballfeeder_cycle_index >= 0:
+        bf = self.ball_feeders[bf_index]
+        if bf.is_busy():
             raise ImplementationException("Ball Feeder not finished with previous operation.")
         if self.debug:
             print(f"Ball Feeder releasing next ball")
-        self.current_ballfeeder_cycle_index = 0
-        for mot in self.ball_feeders:
-            mot.motor.rotate_by_angle(angle=self.ball_feeder_cycle[self.current_ballfeeder_cycle_index], op_complete_callback=self._ball_feeder_next_step)
+        bf.dispense()
         
-    def _ball_feeder_next_step(self, mot):
-        if self.debug:
-            print(f"Ball Feeder step {self.current_ballfeeder_cycle_index} complete. {self}")
-        self.current_ballfeeder_cycle_index += 1
-        if self.current_ballfeeder_cycle_index >= len(self.ball_feeder_cycle):
-            # reached end of cycle --> waiting position
-            if self.debug:
-                print(f"Feeder cycle complete. {self._status=}")
-            self.current_ballfeeder_cycle_index = -1
-            # Moved to the async handling in run()
-            # # set the machine status according to the current operation
-            # self._status = self._status_requested
-            # if self.debug:
-            #     print(f"Machine status = {self._status}")
-            return
-        mot.rotate_by_angle(angle=self.ball_feeder_cycle[self.current_ballfeeder_cycle_index], op_complete_callback=self._ball_feeder_next_step)
-
     def set_ball_acceleration(self, bd_number: int, velocity: float, topspin: float, sidespin: float) -> None:
         motor_speeds = self.ballDrivers[bd_number].calc_motor_speeds(velocity, topspin, sidespin)
         self._set_ball_acceleration(bd_number, motor_speeds)
@@ -445,7 +412,9 @@ class RobbyController:
 
     def _play_shot(self, timer: Timer) -> None:
         """Play the next ball with the current settings and handle release cycle and shot cylcle"""
-        self._release_next_ball()
+        #TODO: We need the BallFeederNumber here, but it would make more sense to maintain Driver-Feeder relations somewhere.
+        #Until that's implemented, we use the driver number also as feeder number.
+        self._release_next_ball(self.ShotCycle.get_current_shot().BallDriverNumber) # the releasing still belongs to the current shot
         sleep(self.BALL_RELEASE_DURATION)
         # update the motors with possibly new settings
         if self._mode == MODE_PROGRAM:
@@ -566,12 +535,18 @@ class RobbyController:
             self._status = STATUS_IDLE
 
     def _prepare_after_mount(self) -> None:
-        """Move all parts into starting positions."""
+        """Move all parts into starting positions after the machine has been assempled.
+           It is questionable if this still makes sense on the machine level, as you would either:
+           - assemble the machine from scratch and then prepare the single parts individually or
+           - assemble only single parts and then again prepare them individually or
+           - just place the machine without need to assemble it and the no need to prepare anything after mount.
+        """
         if self._status != STATUS_IDLE and self._status != STATUS_ERROR:
             raise Exception("RobbyController is still busy. Cannot perform preparation!")
         try:
             self._status = STATUS_PREPARING
-            self._ball_feeder_prepare_after_mount()
+            for bf in self.ball_feeders:
+                bf.prepare_after_mount()
         except Exception as e:
             self._status = STATUS_ERROR
             raise e
@@ -584,6 +559,7 @@ class RobbyController:
     @property
     def mode(self) -> int:
         return self._mode
+
     @mode.setter
     def mode(self, value: int):
         """Gets or sets the current mode the machine is in. Only allowed if status==IDLE<br>

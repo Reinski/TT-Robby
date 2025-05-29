@@ -15,6 +15,15 @@ class ShotCycle:
         self.shots = shots
         self.nextShotIndex = 0
 
+    def get_current_shot(self) -> Shot.Shot:
+        """Return the current shot from the sequence without advancing the index.
+           Returns the first shot in the sequence if the current index is not yet set.
+        """
+        i_shot = self.nextShotIndex - 1
+        if i_shot >= len(self.shots) or i_shot < 0:
+            i_shot= 0
+        return self.shots[i_shot]
+    
     def get_next_shot(self) -> Shot.Shot:
         """Return the next shot from the sequence"""
         if self.nextShotIndex >= len(self.shots):

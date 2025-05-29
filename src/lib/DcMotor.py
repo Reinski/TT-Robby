@@ -100,9 +100,13 @@ class DcMotor():
         return {
             'motor_number': self.motor_number,
             'polarity': self._polarity,
+            'type': __class__.__name__,
             'debug': self.debug,
         }
     def setConfigData(self, data: dict) -> dict:
+        tmp = data.get('motor_number')
+        if tmp:
+            self.motor_number = int(tmp)
         tmp = data.get('polarity')
         if tmp:
             self.polarity = int(tmp)

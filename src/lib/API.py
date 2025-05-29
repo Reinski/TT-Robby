@@ -53,9 +53,62 @@ class API:
     def bs_get_motor_config(self, bs_index: int):
         return self.controller.ball_stirrers[bs_index].getConfigData()
 
+    def bs_start(self, bs_index: int):
+        """
+        Start a ball stirrer. 
+        Parameters:
+        bs_index: index of the ball stirrer (int)
+        """
+        self.controller.ball_stirrers[bs_index].start()
+
+    def bs_stop(self, bs_index: int):
+        """
+        Stop a ball stirrer.
+        Parameters:
+        bs_index: index of the ball stirrer (int)
+        """
+        self.controller.ball_stirrers[bs_index].stop()
+
+    def bs_motor_start(self, bs_index: int, motor_index: int):
+        """
+        Start a motor in a ball stirrer. This should be used e.g. during calibration.
+        Parameters:
+        bs_index: index of the ball stirrer (int)
+        motor_index: index of the motor within the stirrer (int)
+        """
+        self.controller.ball_stirrers[bs_index].motor_start(motor_index)
+    
+    def bs_motor_stop(self, bs_index: int, motor_index: int):
+        """
+        Stop a motor in a ball stirrer.
+        Parameters:
+        bs_index: index of the ball stirrer (int)
+        motor_index: index of the motor within the stirrer (int)
+        """
+        self.controller.ball_stirrers[bs_index].motors[motor_index].stop()
+
     def bf_get_motor_config(self, bf_index: int):
         return self.controller.ball_feeders[bf_index].getConfigData()
     
+    def bf_motor_rotate(self, bf_index: int, motor_index: int, angle_deg: float):
+        """
+        Rotate a motor in a ball feeder by a given angle. This should be used e.g. during calibration.
+        Parameters:
+        bf_index: index of the ball feeder (int)
+        motor_index: index of the motor within the feeder (int)
+        angle_deg: angle in degrees (negative value moves into opposite direction)
+        """
+        self.controller.ball_feeders[bf_index].motors[motor_index].rotate_by_angle(angle_deg)
+    
+    def bf_motor_stop(self, bf_index: int, motor_index: int):
+        """
+        Stop a motor in a ball feeder.
+        Parameters:
+        bf_index: index of the ball feeder (int)
+        motor_index: index of the motor within the feeder (int)
+        """
+        self.controller.ball_feeders[bf_index].motors[motor_index].stop()
+
     def bd_get_motor_config(self, bd_index: int, motor_index: int):
         return self.controller.ballDrivers[bd_index].motors[motor_index].getConfigData()
     def bd_set_motor_config(self, bd_index: int, motor_index: int, data: dict):

@@ -13,32 +13,44 @@
     },
     "ballfeeders": [
         {
-            "type": "StepMotorPIO",
-            "config": {
-                "pio_block_index": 0,
-                "inner_motor_steps": 32,
-                "consecutive_pins": 4,
-                "gear_ratio": 64,
-                "runner_freq": 20000,
-                "starting_gp_pin": 2,
-                "correction_steps": -4,
-                "counter_freq": 2000
-            }
+            "motors": [
+                {
+                    "type": "StepMotorPIO",
+                    "pio_block_index": 0,
+                    "inner_motor_steps": 32,
+                    "consecutive_pins": 4,
+                    "gear_ratio": 64,
+                    "runner_freq": 20000,
+                    "starting_gp_pin": 2,
+                    "correction_steps": -4,
+                    "counter_freq": 2000
+                }
+            ],
+            "motor_states": [
+                {
+                    "action_cycle": [-40, 120, -80],
+                    "mounting_index": 1
+                }
+            ]
         }
     ],
     "ballstirrers": [
         {
-            "type": "StepMotorPIO",
-            "config": {
-                "pio_block_index": 1,
-                "inner_motor_steps": 32,
-                "consecutive_pins": 4,
-                "gear_ratio": 64,
-                "runner_freq": 20000,
-                "starting_gp_pin": 10,
-                "correction_steps": -4,
-                "counter_freq": 2000
-            }
+            "bs_index": 0,
+            "debug": true,
+            "motors": [
+                {
+                    "type": "StepMotorPIO",
+                    "pio_block_index": 1,
+                    "inner_motor_steps": 32,
+                    "consecutive_pins": 4,
+                    "gear_ratio": 64,
+                    "runner_freq": 20000,
+                    "starting_gp_pin": 10,
+                    "correction_steps": -4,
+                    "counter_freq": 2000
+                }
+            ]
         }
     ],
     "balldrivers": [
@@ -71,5 +83,25 @@
         }
     ],
     "rotators": [
+        {
+            "mr_index": 0,
+            "debug": true,
+            "max_angle_deg": 90,
+            "min_angle_deg": -90,
+            "motors": [
+                {
+                    "type": "Sg92r",
+                    "gpio_pin": 18,
+                    "servo_freq": 50,
+                    "min_angle_deg": -90,
+                    "max_angle_deg": 90
+                }
+            ],
+            "motor_settings": [
+                {
+                    "angle_factor": 1.0
+                }
+            ]
+        }
     ]
 }
