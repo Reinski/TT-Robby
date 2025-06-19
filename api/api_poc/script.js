@@ -31,8 +31,16 @@ const api_test_routines = new Map([
     { text: "stop", description: "stop the motor", url_ext: "/stop", method: "POST"},
   ]],
   ["machinerotators/[i]", [
-    { text: "start", description: "start the rotator with its current settings", url_ext: "/start", method: "POST"},
-    { text: "stop", description: "stop the rotator", url_ext: "/stop", method: "POST"},
+    { text: "rotate home", description: "move the rotator into neutral position", url_ext: "/rotate_home", method: "POST"},
+    { text: "rotate min", description: "turn the rotator to its min rotation", url_ext: "/rotate_min", method: "POST"},
+    { text: "rotate max", description: "turn the rotator to its max rotation", url_ext: "/rotate_max", method: "POST"},
+  ]],
+  ["machinerotators/[i]/motors/[i]", [
+    { text: "rotate home", description: "move the rotator motor into neutral position", url_ext: "/rotate_home", method: "POST"},
+    { text: "rotate min", description: "turn the motor to its min rotation", url_ext: "/rotate_min", method: "POST"},
+    { text: "rotate max", description: "turn the motor to its max rotation", url_ext: "/rotate_max", method: "POST"},
+    { text: "left", description: "turn the motor 5° to the left", url_ext: "/rotate", method: "PUT", data: { angle: -5.0 } },
+    { text: "right", description: "turn the motor 5° to the right", url_ext: "/rotate", method: "PUT", data: { angle: 5.0 } },
   ]],
   ["ballfeeders/[i]", [
     { text: "prepare", description: "set current position as mounting position and move from here into waiting position", url_ext: "/prepare", method: "POST"},

@@ -82,25 +82,40 @@
             ]
         }
     ],
-    "rotators": [
+    "machinerotators": [
         {
             "mr_index": 0,
             "debug": true,
-            "max_angle_deg": 90,
-            "min_angle_deg": -90,
+            "max_angle_deg": 45,
+            "min_angle_deg": -45,
             "motors": [
                 {
                     "type": "Sg92r",
-                    "gpio_pin": 18,
-                    "servo_freq": 50,
-                    "min_angle_deg": -90,
-                    "max_angle_deg": 90
+                    "control_pin": 0,
+                    "halfspan_angle": 90,
+                    "freq": 50,
+                    "t_low": 1.0,
+                    "t_high": 2.0,
+                    "sec_per_degree": 0.001666667
+                },
+                {
+                    "type": "Sg92r",
+                    "control_pin": 1,
+                    "halfspan_angle": 90,
+                    "freq": 50,
+                    "t_low": 1.0,
+                    "t_high": 2.0,
+                    "sec_per_degree": 0.001666667
                 }
             ],
             "motor_settings": [
                 {
-                    "angle_factor": 1.0
+                    "angle_factor": 1.5
+                },
+                {
+                    "angle_factor": 1.5
                 }
+
             ]
         }
     ]

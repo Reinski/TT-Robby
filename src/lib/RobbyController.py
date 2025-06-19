@@ -10,7 +10,7 @@ from BallFeeder import BallFeeder
 import BallFeeder as Bf
 from BallStirrer import BallStirrer
 from MachineRotator import MachineRotator
-from sg92r import Sg92r
+from Sg92r import Sg92r
 from _thread import start_new_thread, allocate_lock
 import gc
 import json
@@ -135,11 +135,13 @@ class RobbyController:
                     else:
                         raise NotImplementedError(f"Motor Driver class '{cfg['motor_driver']['type']}' has not been implemented yet!")
             else:
+                if self.debug:
+                    print("No ball drivers found in settings, creating default one.")
                 self.ballDrivers.append(BallDriver(0, debug=self.debug))
 
             txt_step = "Ball Feeders Initialization"
             if self.debug:
-                print(f"{self.ballDrivers=}")
+                print(f"{len(self.ballDrivers)=}")
                 print("Initializing RobbyController: ", txt_step)
             self.ball_feeders: List[BallFeeder] = []
             if KEY_BALL_FEEDERS in settings:
@@ -147,12 +149,14 @@ class RobbyController:
                     feeder = Bf.create_from_config(bf_cfg=bf_cfg, bf_index=len(self.ball_feeders), debug=self.debug)
                     self.ball_feeders.append(feeder)
             else:
+                if self.debug:
+                    print("No ball feeders found in settings, creating default one.")
                 # create one default entry, using defaults
                 self.ball_feeders.append(BallFeeder(motor=StepMotorPIO(mode=MODE_COUNTED, debug=self.debug), bf_index=0, debug=self.debug))
 
             txt_step = "Ball Stirrers Initialization"
             if self.debug:
-                print(f"{self.ball_feeders=}")
+                print(f"{len(self.ball_feeders)=}")
                 print("Initializing RobbyController: ", txt_step)
             self.ball_stirrers: List[BallStirrer] = []
             if KEY_BALL_STIRRERS in settings:
@@ -163,24 +167,30 @@ class RobbyController:
                     bs.setConfigData(sub_cfg)
                     self.ball_stirrers.append(bs)
             else:
+                if self.debug:
+                    print("No ball stirrers found in settings, creating default one.")
                 # create one default entry
                 self.ball_stirrers.append(BallStirrer(bs_index=0, motor=StepMotorPIO(mode=MODE_PERMANENT, debug=self.debug), debug=self.debug))
             
             txt_step = "Machine Rotators Initialization"
             if self.debug:
-                print(f"{self.ball_stirrers=}")
+                print(f"{len(self.ball_stirrers)=}")
                 print("Initializing RobbyController: ", txt_step)
             self.machine_rotators: List[MachineRotator] = []
             if KEY_MACHINE_ROTATORS in settings:
                 for cfg_rot in settings[KEY_MACHINE_ROTATORS]:
                     rotator = MachineRotator(mr_index=len(self.machine_rotators), debug=self.debug)
                     rotator.setConfigData(cfg_rot)
+                    self.machine_rotators.append(rotator)
             else:
+                if self.debug:
+                    print("No machine rotators found in settings, creating default one.")
                 # create one default entry
                 self.machine_rotators.append(MachineRotator(0, debug=self.debug))
 
             txt_step = "BallTimer Initialization"
             if self.debug:
+                print(f"{len(self.machine_rotators)=}")
                 print("Initializing RobbyController: ", txt_step)
             self.BallTimer = Timer() # type: ignore
             self.BallTimerRunning = False

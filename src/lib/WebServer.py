@@ -72,8 +72,22 @@ class WebServer:
                                 },
                             },
                         },
-                    }
-                }
+                        'machinerotators': {
+                            '^[0-9]+$': {
+                                'rotate_max': lambda mr: controller.API.mr_rotate(int(mr), float(controller.machine_rotators[int(mr)].max_angle_deg)),
+                                'rotate_min': lambda mr: controller.API.mr_rotate(int(mr), float(controller.machine_rotators[int(mr)].min_angle_deg)),
+                                'rotate_home': lambda mr: controller.API.mr_rotate(int(mr), 0.0),
+                                'motors': {
+                                    '^[0-9]+$': {
+                                        'rotate_max': lambda mr, m: controller.API.mr_motor_rotate(int(mr), int(m), float(controller.machine_rotators[int(mr)].motors[int(m)]._halfspan_angle if controller.machine_rotators[int(mr)].motors[int(m)].__class__.__name__=='Sg92r' else 45.0)),
+                                        'rotate_min': lambda mr, m: controller.API.mr_motor_rotate(int(mr), int(m), -float(controller.machine_rotators[int(mr)].motors[int(m)]._halfspan_angle if controller.machine_rotators[int(mr)].motors[int(m)].__class__.__name__=='Sg92r' else 45.0)),
+                                        'rotate_home': lambda mr, m: controller.API.mr_motor_rotate(int(mr), int(m), 0.0),
+                                    },
+                                },
+                            },
+                        },
+                    },
+                },
             }, False
         # PUT is used to modify data for existing resources, which can be both, configs and status data
         if method == 'PUT':
@@ -118,6 +132,20 @@ class WebServer:
                                         '/default/': lambda bf: {},
                                     },
                                 },
+                            },
+                        },
+                        'machinerotators': {
+                            '^[0-9]+$': {
+                                'motors': {
+                                    '^[0-9]+$': {
+                                        'rotate': lambda mr, m, data: controller.API.mr_motor_rotate(int(mr), int(m), float(data['angle'])),
+                                        'config': lambda mr, m, data: controller.machine_rotators[int(mr)].motors[int(m)].setConfigData(data),
+                                        'status': lambda mr: {},
+                                        '/default/': lambda mr: {},
+                                    },
+                                },
+                                'rotate': lambda mr, data: controller.machine_rotators[int(mr)].rotate(float(data['angle'])),
+                                'config': lambda mr, data: controller.machine_rotators[int(mr)].setConfigData(data),
                             },
                         },
                     }

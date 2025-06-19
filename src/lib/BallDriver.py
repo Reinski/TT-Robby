@@ -28,8 +28,12 @@ class BallDriver():
            motor_angles: mapping of connected motors (by index) to their orientation (by angle). 0° refers to top, 60° to top left, etc. in the machine's forward axial view.
            sda_pin: GP-pin number on the pico where the motor shield (pca9685) is connected.
            address: I2C address
+           debug: Set to True to enable debug output
         """
-        self.debug = debug
+        if debug is None:
+            self.debug = False
+        else:
+            self.debug = debug
         self.bd_number = bd_number
         self._status = 0 # 0: stopped; 1: active (but motors may be at speed 0!)
         try:
@@ -38,7 +42,7 @@ class BallDriver():
             raise OSError(f"ERROR: BallDriver #{bd_number} could not initialize PCA9685 motor driver on {sda_pin} channel {i2c_channel} (please check the wiring): {e}")
         self.motorDriver.setPWMFreq(50)
         self.motor_angles = [a for a in motor_angles if a is not None]
-        self.motors = [DcMotor(self.motorDriver, i_mot, 1, debug) for i_mot in range(len(self.motor_angles))]
+        self.motors = [DcMotor(self.motorDriver, i_mot, 1, self.debug) for i_mot in range(len(self.motor_angles))]
         self.wheel_diameters = [0.04 for _ in self.motors] # wheel diameters in m
         self.motorSpeeds = [0 for _ in self.motors] # current motor speeds (normalized to 100)
 

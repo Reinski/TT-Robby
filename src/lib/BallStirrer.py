@@ -1,4 +1,4 @@
-from sg92r import Sg92r
+from Sg92r import Sg92r
 from StepMotorPIO import StepMotorPIO, MODE_PERMANENT
 from RobbyExceptions import ImplementationException
 
@@ -19,7 +19,7 @@ class BallStirrer:
         self.debug = debug
         self.running = False
         if self.debug: 
-            print(f"BallStirrer #{self.bs_index} initialized with motor ", type(motor).__name__, ".") # debug
+            print(f"BallStirrer #{self.bs_index} initialized with motor ", type(motor).__name__, ".")
 
     def motor_start(self, motor_index: int):
         """Starts the specified motor. This method is a uniform testing method for the differnt motor types."""

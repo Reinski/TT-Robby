@@ -114,6 +114,25 @@ class API:
     def bd_set_motor_config(self, bd_index: int, motor_index: int, data: dict):
         self.controller.ballDrivers[bd_index].motors[motor_index].setConfigData(data)
 
+    def mr_rotate(self, mr_index: int, angle_deg: float):
+        """
+        Rotates the machine rotator by a given angle.
+        Parameters:
+        mr_index: index of the machine rotator (int)
+        angle_deg: angle in degrees (negative value moves into opposite direction)
+        """
+        self.controller.machine_rotators[mr_index].rotate(angle_deg)
+
+    def mr_motor_rotate(self, mr_index: int, motor_index: int, angle_deg: float):
+        """
+        Rotate a motor in a machine rotator by a given angle. This should be used e.g. during calibration.
+        Parameters:
+        mr_index: index of the machine rotator (int)
+        motor_index: index of the motor within the rotator (int)
+        angle_deg: angle in degrees (negative value moves into opposite direction)
+        """
+        self.controller.machine_rotators[mr_index].motors[motor_index].rotate_by_angle(angle_deg)
+    
     def get_machine_rotator_config(self, mr_index: int):
         if mr_index >= 0:
             return self.controller.machine_rotators[mr_index].getConfigData()
