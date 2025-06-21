@@ -28,8 +28,8 @@
             ],
             "motor_states": [
                 {
-                    "action_cycle": [-40, 120, -80],
-                    "mounting_index": 1
+                    "action_cycle": [-77],
+                    "mounting_index": 0
                 }
             ]
         }

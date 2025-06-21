@@ -10,6 +10,7 @@ import time
 from DcMotor import DcMotor
 from Pca9685 import PCA9685, PIN_SDA, I2C_CHANNEL
 from RobbyExceptions import InputDataException
+from Shot import Shot
 
 class BallDriver():
     """BallDriver controls the DC motors used to accelerate the ball."""
@@ -44,18 +45,64 @@ class BallDriver():
         self.motor_angles = [a for a in motor_angles if a is not None]
         self.motors = [DcMotor(self.motorDriver, i_mot, 1, self.debug) for i_mot in range(len(self.motor_angles))]
         self.wheel_diameters = [0.04 for _ in self.motors] # wheel diameters in m
-        self.motorSpeeds = [0 for _ in self.motors] # current motor speeds (normalized to 100)
+        self.motor_speeds = [0 for _ in self.motors] # configured motor speeds (normalized to 100)
+        """The motor speeds for the current shot (regardless of the current status!), normalized to 100% (-100 to +100)"""
+        self.current_shot = (0.0, 0.0, 0.0)
+        """(v_ball_norm, w_h_norm, w_v_norm)"""
 
-    def calc_motor_speeds(self, v_ball_norm = 1.0, w_h_norm = 0.0, w_v_norm = 0.0) -> List[int]:
+    def update_from_shot(self, shot: Shot) -> None:
         """
-        Gets the motor speeds for the specified ball parameters.
+        Updates the ball driver state from a Shot object.
+        Parameters:
+        shot: Shot object containing the parameters for the ball driver.
+        """
+        if self.debug:
+            print(f"update_from_shot({shot})")
+        if shot.MotorSettings is None:
+            self.update_current_shot(shot.BallSpeed, shot.Topspin, shot.Sidespin) 
+            # this calculated the motor speeds, so let's store them in the Shot object
+            shot.MotorSettings = self.motor_speeds
+        else:
+            self.current_shot = (float(shot.BallSpeed), float(shot.Topspin), float(shot.Sidespin))
+            self.motor_speeds = shot.MotorSettings
+            if self._status == 1: # only set speeds if the driver is active
+                self._set_motor_speeds(self.motor_speeds)
+
+
+    def update_current_shot(self, v_ball_norm: Union[float, None]=None, w_h_norm: Union[float, None]=None, w_v_norm: Union[float, None]=None) -> None:
+        """
+        Updates  the specified components of the current shot and applies them directly if the motors are currently active.
+        This allows for changes if no Shot object is at hand. Otherwise prefer using update_from_shot(), as Shot can buffer the motor settings.
+        Parameters:
+        v_ball_norm: ball's translational speed (considered horizontal, normalized to 1.0=max-speed)
+        w_h_norm: horizontal angular speed --> topspin(+)/backspin(-) between -1 and +1
+        w_v_norm: vertical angular speed --> sidespin-counterclock(+)/sidespin-clockwise(-) between -1 and +1        
+        """
+        if self.debug:
+            print(f"update current shot with these values: {v_ball_norm=}, {w_h_norm=}, {w_v_norm=}")
+        if v_ball_norm is None:
+            v_ball_norm = self.current_shot[0]
+        if w_h_norm is None:
+            w_h_norm = self.current_shot[1]
+        if w_v_norm is None:
+            w_v_norm = self.current_shot[2]
+        self.current_shot = (v_ball_norm, w_h_norm, w_v_norm)
+        self.motor_speeds = self._calc_motor_speeds(float(v_ball_norm), float(w_h_norm), float(w_v_norm))
+        if self._status == 1: # only set speeds if the driver is active
+            self._set_motor_speeds(self.motor_speeds)
+
+
+    def _calc_motor_speeds(self, v_ball_norm = 0.75, w_h_norm = 0.0, w_v_norm = 0.0) -> List[int]:
+        """
+        Calculates and returns the motor speeds for the specified ball parameters.  
+        It DOES NOT have any impact on the motors or the current state of the ball driver!
         
         Parameters:
         v_ball_norm: ball's translational speed (considered horizontal, normalized to 1=max-speed)
         w_h_norm: horizontal angular speed --> topspin(+)/backspin(-) between -1 and +1
         w_v_norm: vertical angular speed --> sidespin-counterclock(+)/sidespin-clockwise(-) between -1 and +1
         Returns:
-        Tuple with the speed setting per motor, unit of % (-100% to +100%)
+        List[int] with the speed setting per motor, unit of % (-100% to +100%)
         """
         if self.debug:
             print(f"calc_motor_speeds({v_ball_norm=}, {w_h_norm=}, {w_v_norm=})")
@@ -118,11 +165,14 @@ class BallDriver():
             print(f"after min speed calc: {speeds=}")
         
         # convert to percentage
-        for i in range(len(speeds)):
-            speeds[i] = speeds[i]*100
+        speeds = [int(s * 100.0) for s in speeds]
         if self.debug:
             print(f"after percentage conversion: {speeds=}")
-        return [int(s) for s in speeds]
+
+        self.current_shot = (v_ball_norm, w_h_norm, w_v_norm)
+        if self.debug:
+            print(f"current shot updated to: {self.current_shot}")
+        return speeds
 
         # self.v_ball = v_ball_norm * self.v_ball_max # m/s
         # self.w_h = w_h_norm * self.w_h_max * 2 * math.pi # arc/s
@@ -149,25 +199,35 @@ class BallDriver():
         # for i in range(len(self.motors)):
         #     self.motors[i].SetSpeed(self.motorSpeeds[i])
 
-    def setMotorSpeeds(self, motor_speeds: List[int]) -> None:
+    def _set_motor_speeds(self, motor_speeds: List[int]) -> None:
         """
-        Sets the motors to the specified speeds.
+        Sets the motor speeds to the specified speeds.
         The speeds can be determined via method calc_motor_speeds().<br>
-        Note that this will not start or stop actual operation, as this is dependent on the status.
+        Note that this will not start or stop the ball driver, as that is dependent on the status.
         Parameters:
-        motor_speeds: requested speed per motor, normalized to 100% (-100.0 to +100.0) 
+        motor_speeds: requested speed per motor, normalized to 100% (-100 to +100) 
         """
         if self.debug:
             print(f"set_motor_speeds({motor_speeds=})")
-        if len(motor_speeds) != len(self.motorSpeeds):
+        if self._status == 0:
+            raise InputDataException("BallDriver is not started! Please call start() before setting motor speeds.")
+        if len(motor_speeds) != len(self.motor_speeds):
             raise InputDataException("Invalid number of values in motor_speeds!")
         i = 0
         for spd in motor_speeds:
             if self.debug:
                 print(f"motor speed {i}: {spd} %")
-            self.motors[i].set_speed(spd)
-            self.motorSpeeds[i] = spd
+            self.motor_speeds[i] = spd
+            # only set the actual speed if the driver is active
+            if self.status == 1:
+                self.motors[i].set_speed(spd)
             i += 1
+
+    def start(self):
+        """This will start motor operation with the last configured motor speeds.
+           If no speeds had been set before, the motors will not run, but will react imediately to speed changes.
+        """
+        self.status = 1 # started
 
     def stop(self):
         """This will halt motor operation without changing the configured motor speeds."""
@@ -184,17 +244,16 @@ class BallDriver():
                 motor.stop()
         else:
             self._status = 1
-            self.setMotorSpeeds(self.motorSpeeds)
+            self._set_motor_speeds(self.motor_speeds)
 
 
     def getStatusData(self) -> dict:
-        ret = {}
-        motors = []
-        for motor in self.motors:
-            motors.append(motor.getStatusData())
-        ret['bd_number'] = self.bd_number
-        ret['status'] = self._status
-        ret['motors'] = motors
+        ret = {
+            'status': self._status,
+            'bd_number': self.bd_number,
+            'current_shot': {'velocity': self.current_shot[0], 'topspin': self.current_shot[1], 'sidespin': self.current_shot[2]},
+            'motor_speeds': self.motor_speeds,
+        }
         return ret
 
     def getConfigData(self) -> dict:
@@ -209,10 +268,41 @@ class BallDriver():
         ret['motor_driver'] = self.motorDriver.getConfigData()
         return ret
 
+    def setConfigData(self, data) -> dict:
+        """Adopts all settings from a serialized config. Existing settings will be overwritten."""
+        if self.debug:
+            print(f"BallDriver #{self.bd_number} setConfigData({data})")
+        self.bd_number = data.get('bd_number', 0)
+        self.motor_angles = data.get('motor_angles', [0, 180])
+        self.wheel_diameters = data.get('wheel_diameters', [0.04, 0.04])
+        drv_cfg = data.get('motor_driver')
+        self.motorDriver = PCA9685(
+            address=drv_cfg.get('address', 0x40),
+            debug=self.debug,
+            i2c_channel=drv_cfg.get('i2c_channel', I2C_CHANNEL),
+            sda_pin=drv_cfg.get('sda_pin', PIN_SDA)
+        )
+        self.motorDriver.setConfigData(data.get('motor_driver', {}))
+        motors = []
+        for mot_cfg in data.get('motors', []):
+            motor = DcMotor(self.motorDriver, mot_cfg['index'], mot_cfg['channel'], self.debug)
+            motor.setConfigData(mot_cfg)
+            motors.append(motor)
+        self.motors = motors
+        self.motor_speeds = [0 for _ in self.motors]
+        return self.getConfigData()
+
 if __name__ == "__main__":
     driver = BallDriver(0, debug=True)
-    # speed up for a second
-    driver.setMotorSpeeds(driver.calc_motor_speeds(.75, 0, 0))
     print(driver.getConfigData())
-    time.sleep(1)
-    driver.setMotorSpeeds(driver.calc_motor_speeds(0, 0, 0))
+    # speed up for a second
+    print(driver.getStatusData())
+    driver.update_current_shot(0.75, 0, 0)
+    print(driver.getStatusData())
+    time.sleep(5)
+    print(driver.getStatusData())
+    driver.update_current_shot(0.75, 0.5, 0.5)
+    print(driver.getStatusData())
+    time.sleep(5)
+    driver.stop()
+    print(driver.getStatusData())

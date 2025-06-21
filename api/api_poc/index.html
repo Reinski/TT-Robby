@@ -15,7 +15,7 @@
       <h1>TTRobby</h1>
       <nav>
         <ul>
-          <li><button class="mode-switcher" data-mode="config">Konfiguration und Kalibrierung</button></li>
+          <li><button class="mode-switcher" data-mode="configuration">Konfiguration und Kalibrierung</button></li>
           <li><button class="mode-switcher" data-mode="direct">Direkt-Modus</button></li>
           <li><button class="mode-switcher" data-mode="program">Programm-Modus</button></li>
         </ul>
@@ -26,8 +26,26 @@
     <div id="content-sidebar">
     </div>
     <main>
-      <div class="mode-container" id="mode-container">
-        <!-- Hier wird die jeweilige Bedienung des gewählten Modus erfolgen -->
+      <!-- Containers for the different modes -->
+      <div class="mode-container" id="config-container">
+      </div>
+      <div class="mode-container" id="directcontrol-container">
+        <div class="ball-properties">
+            <label for="ballspeed">Ball speed:</label>
+            <input type="range" id="ballspeed" min="50" max="100" value="75" oninput="setValueText('ballspeed-value', this.value)" onchange="setCurrentShot('velocity', this.value/100)">
+            <span id="ballspeed-value">75</span>
+            <label for="topspin">Topspin:</label>
+            <input type="range" id="topspin" min="-100" max="100" value="0" oninput="setValueText('topspin-value', this.value)" onchange="setCurrentShot('topspin', this.value/100)">
+            <span id="topspin-value">0</span>
+            <label for="sidespin">Sidespin:</label>
+            <input type="range" id="sidespin" min="-100" max="100" value="0" oninput="setValueText('sidespin-value', this.value)" onchange="setCurrentShot('sidespin', this.value/100)">
+            <span id="sidespin-value">0</span>
+            <label for="pause">Pause time:</label>
+            <input type="range" id="pause" min="1.0" max="10.0" value="4.0" step="0.1" oninput="setValueText('sidespin-value', this.value)" onchange="setCurrentShot('sidespin', this.value/100)">
+            <span id="pause-value">4.0</span>
+        </div>
+      </div>
+      <div class="mode-container" id="program-container">
       </div>
     </main>
     <footer id="footer-container">

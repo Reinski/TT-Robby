@@ -34,7 +34,7 @@ class DcMotor():
 
     def set_speed(self, speed: int):
         """
-        Sets the motor speed directly to the specified percentage of max power.
+        Sets the actual motor speed directly to the specified percentage of max power.
         Parameters:
         speed: motor speed from -100 (max reverse) to 0 (stop) to 100 (max forward speed)
         """

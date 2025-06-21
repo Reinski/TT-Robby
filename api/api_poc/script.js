@@ -5,18 +5,21 @@ let api_port = '80';
 let api_basepath = '/api/v1';
 let current_api = null; // API info for the current menu item
 let status_interval = 10000;
+let machineMode = '';
 
+const mode_texts = { 0: 'direct', 1: 'program', 2: 'configuration' };
 const menu_api_map = new Map([
-  ["sys_config", { mode: "config", parent_key: "system", text: "Machine", url: "/system/config", exclude_keys: ['machinerotators', 'balldrivers', 'ballstirrers', 'ballfeeders'] }],
-  ["bd_config", { mode: "config", parent_key: "balldrivers", text: "Ball Drivers", url: "/balldrivers/config", exclude_keys: [] }],
-  ["bf_config", { mode: "config", parent_key: "ballfeeders", text: "Ball Feeders", url: "/ballfeeders/config", exclude_keys: [] }],
-  ["bs_config", { mode: "config", parent_key: "ballstirrers", text: "Ball Stirrers", url: "/ballstirrers/config", exclude_keys: [] }],
-  ["mr_config", { mode: "config", parent_key: "machinerotators", text: "Machine Rotators", url: "/machinerotators/config", exclude_keys: [] }],
+  ["sys_config", { mode: "configuration", parent_key: "system", text: "Machine", url: "/system/config", exclude_keys: ['machinerotators', 'balldrivers', 'ballstirrers', 'ballfeeders'] }],
+  ["bd_config", { mode: "configuration", parent_key: "balldrivers", text: "Ball Drivers", url: "/balldrivers/config", exclude_keys: [] }],
+  ["bf_config", { mode: "configuration", parent_key: "ballfeeders", text: "Ball Feeders", url: "/ballfeeders/config", exclude_keys: [] }],
+  ["bs_config", { mode: "configuration", parent_key: "ballstirrers", text: "Ball Stirrers", url: "/ballstirrers/config", exclude_keys: [] }],
+  ["mr_config", { mode: "configuration", parent_key: "machinerotators", text: "Machine Rotators", url: "/machinerotators/config", exclude_keys: [] }],
+  ["direct_control", { mode: "direct", parent_key: "balldrivers", text: "Machine Control" }],
 ]);
 const api_test_routines = new Map([
   ["balldrivers/[i]", [
-    { text: "start", description: "start the stirrer with its current settings", url_ext: "/start", method: "POST"},
-    { text: "stop", description: "stop the stirrer", url_ext: "/stop", method: "POST"},
+    { text: "start", description: "start the ball driver with its current settings", url_ext: "/start", method: "POST"},
+    { text: "stop", description: "stop the ball driver", url_ext: "/stop", method: "POST"},
   ]],
   ["balldrivers/[i]/motors/[i]", [
     { text: "start", description: "start the motor in positive direction (this should accelerate the ball out of the machine)", url_ext: "/start", method: "POST"},
@@ -51,13 +54,16 @@ const api_test_routines = new Map([
     { text: "step +", description: "run one step into positive direction", url_ext: "/rotate", method: "PUT", data: { angle: 5.0 } },
     { text: "step -", description: "run one step into negative direction", url_ext: "/rotate", method: "PUT", data: { angle: -5.0 } },
   ]],
-])
+]);
 
 const contentSidebar = document.getElementById('content-sidebar');
 const navSidebar = document.getElementById('nav-sidebar');
-const configContainer = document.getElementById('mode-container');
+const configContainer = document.getElementById('config-container');
+const directcontrolContainer = document.getElementById('directcontrol-container');
+const programContainer = document.getElementById('program-container');
 const statusContainer = document.getElementById('footer-container');
 const machineStatusContainer = document.getElementById('machinestatus-placeholder');
+let currentModeStatusInterval = null; // intervalID for the current background update of the mode status update
 
 // Globale Variable für die JSON-Daten
 /**
@@ -85,12 +91,15 @@ async function getMachineStatus() {
     renderAppStatus('Fetching machine status...');
     await fetchJsonDataFromApi('/system/status');
     const statusHtml = `
-      <div>Mode: ${apiData.mode}</div>
-      <div>Status: ${apiData.status}</div>
+      <div>Mode: ${apiData.mode_text}</div>
+      <div>Status: ${apiData.status_text}</div>
       <div>Next Shot in Cycle: ${apiData.shot_cycle.next_shot_index}/${apiData.shot_cycle.total_shots}</div>
     `;
     machineStatusContainer.innerHTML = statusHtml;
     renderAppStatus('OK');
+    if(apiData.mode_text !== machineMode) {
+      switchMode(apiData.mode_text);
+    }
   } catch (error) {
     machineStatusContainer.innerHTML = 'Fehler beim Abrufen des Status: ' + error;
     renderAppStatus('Fehler beim Abrufen des Status:', error);
@@ -99,6 +108,7 @@ async function getMachineStatus() {
 
 function fillNavigationSidebar(mode) {
   clearSidebar(navSidebar);
+  clearSidebar(contentSidebar);
   menu_api_map.forEach((value, key) => {
     if (value.mode === mode) {
       addSidebarItem(navSidebar, value.text, key, selectNavigationSidebarItem, "");
@@ -124,36 +134,59 @@ function selectNavigationSidebarItem(sidebar, item) {
   // Show the config for the selected key
   console.log('Selected Sidebar-Item:', value);
   current_api = menu_api_map.get(value);
-  getSystemConfig();
+  switch(current_api.mode) {
+    case 'configuration':
+      getSystemConfig();
+      break;
+    case 'direct':
+      fillDirectControlSidebar();
+      break;
+    case 'program':
+      break;
+  }
 }
 
 // Funktion zum Umschalten zwischen den Betriebsmodi
 function switchMode(mode) {
+  machineMode = mode;
+  if(currentModeStatusInterval!== null) {
+    clearInterval(currentModeStatusInterval);
+    currentModeStatusInterval = null;
+  }
   // Hier wird die jeweilige Bedienung des gewählten Modus implementiert
-  console.log(`Modus gewechselt zu: ${mode}`);
+  console.log(`Mode change triggered: ${mode}`);
   // Setze den aktiven Modus
   const buttons = document.querySelectorAll('.mode-switcher');
   buttons.forEach((button) => {
     button.classList.remove('active');
   });
   const activeButton = document.querySelector(`.mode-switcher[data-mode="${mode}"]`);
-  activeButton.classList.add('active');
+  activeButton?.classList.add('active');
 
   fillNavigationSidebar(mode);
 
   switch (mode) {
-    case 'config':
+    case 'configuration':
       configContainer.style.display = 'block';
+      directcontrolContainer.style.display = 'none';
+      programContainer.style.display = 'none';
       getSystemConfig();
       break;
     case 'direct':
       configContainer.style.display = 'none';
+      directcontrolContainer.style.display = 'block';
+      programContainer.style.display = 'none';
+      initDirectControl();
       break;
     case 'program':
       configContainer.style.display = 'none';
+      directcontrolContainer.style.display = 'none';
+      programContainer.style.display = 'block';
       break;
     default:
       configContainer.style.display = 'none';
+      directcontrolContainer.style.display = 'none';
+      programContainer.style.display = 'none';
   }
 }
 
@@ -162,6 +195,7 @@ document.querySelectorAll('.mode-switcher').forEach((button) => {
   button.addEventListener('click', (event) => {
     event.preventDefault();
     const mode = button.getAttribute('data-mode');
+    callApiMethod('/system/mode', 'PUT', { data: { mode_text: mode} })
     switchMode(mode);
   });
 });
@@ -171,6 +205,17 @@ function clearSidebar(sidebar) {
   sidebar.innerHTML = '';
 }
 
+/**
+ * Calls a method of the TT-Robby API.
+ *
+ * @param {string} url The URL-path of the API method to call, relative to the base path.
+ * @param {string} method The HTTP method to use for the call.
+ * @param {Object} data The data to send in the request body.
+ *
+ * @returns {Promise<Object>} The JSON response from the server.
+ *
+ * @throws Error if the call fails.
+ */
 async function callApiMethod(url, method, data) {
   try {
     const fullUrl = `${api_protocol}://${api_host}:${api_port}${api_basepath}${url}`;
@@ -250,11 +295,29 @@ function selectFirstSidebarItem(sidebar) {
 function fillContentSidebar(data) {
   clearSidebar(contentSidebar);
   for (const key in data) {
-    if (!current_api.exclude_keys.includes(key)) {
+    if (!current_api.exclude_keys?.includes(key)) {
       addSidebarItem(contentSidebar, key, key, selectConfigSidebarItem, current_api.parent_key);
     }
   }
   // select the first item by default
+  selectFirstSidebarItem(contentSidebar);
+}
+
+async function fillDirectControlSidebar() {
+  clearSidebar(contentSidebar);
+  renderAppStatus('Fetching system configuration...');
+  data = await callApiMethod('/system/config', 'GET');
+  if (!data) {
+    renderAppStatus('Could not fetch system configuration.', 'No data received from API');
+    return;
+  }
+  else {
+    renderAppStatus('OK');
+  }
+
+  for (var i = 0; i < data.data.balldrivers; i++){
+    addSidebarItem(contentSidebar, 'Ball driver #' + i, i.toString(), selectConfigSidebarItem, 'balldrivers');
+  }
   selectFirstSidebarItem(contentSidebar);
 }
 
@@ -280,6 +343,9 @@ function loadConfig(config) {
 function renderAppStatus(message, error) {
   if (error) {
     console.error(message, error);
+    statusContainer.style.backgroundColor = '#d32929';
+  } else {
+    statusContainer.style.backgroundColor = null;
   }
   statusContainer.innerHTML = message + (error ? ' ' + error : '');
 }
@@ -436,3 +502,105 @@ function cancelEdit(key) {
 getMachineStatus();
 setInterval(getMachineStatus, status_interval);
 
+/**
+ * Initializes the UI for direct control mode by updating the status once and scheduling
+ * future updates.
+ */
+function initDirectControl() {
+  updateDirectControlStatus();
+  currentModeStatusInterval = setInterval(updateDirectControlStatus, status_interval);
+  console.log('Direct control initialized');
+}
+
+/**
+ * Updates the text display for a specific slider value.
+ *
+ * Depending on the `valueSpanId`, this function formats the value
+ * as a percentage, and appends additional context to the text.
+ * 
+ * @param {string} valueSpanId - The ID of the span element to update.
+ * @param {number} value - The numeric value to format and display.
+ */
+
+function setValueText(valueSpanId, value) {
+  const valueSpan = document.getElementById(valueSpanId);
+  let text;
+  switch(valueSpanId) {
+    case 'ballspeed-value':
+      text = `${value}%`;
+      break;
+    case 'sidespin-value':
+      switch(Math.sign(value)) {
+        case -1:
+          text = `${value}% (left)`;
+          break;
+        case 1:
+          text = `${value}% (right)`;
+          break;
+        case 0:
+          text = `${value}% (no spin)`;
+          break;
+      }
+      break;
+    case 'topspin-value':
+      switch(Math.sign(value)) {
+        case -1:
+          text = `${value}% (backspin)`;
+          break;
+        case 1:
+          text = `${value}% (topspin)`;
+          break;
+        case 0:
+          text = `${value}% (no spin)`;
+          break;
+      }
+      break;
+    case 'pause-value':
+      text = `${value} s`;
+      break;
+  }
+  valueSpan.textContent = text;
+}
+/**
+ * Sets the ball speed on the machine to the specified value by sending a PUT request to the API.
+ * 
+ * @param {number} value - The speed value to set for the ball.
+ */
+function setCurrentShot(propertyName, value) {
+  console.log(`Setting ${propertyName} to ${value}`);
+  callApiMethod('/balldrivers/0/current_shot', 'PUT', { data: { [propertyName]: value } })
+}
+async function updateDirectControlStatus() {
+  renderAppStatus('Fetching ball driver status from machine...');
+
+  // Fetch the ball driver status
+  //TODO: Implement dynamic bd index based on the selected ball driver
+  const bd_status = callApiMethod('/balldrivers/0/status', 'GET').then((data) => {
+    console.log('received data:', console.log(JSON.stringify(data)));
+    if (data.data.current_shot) {
+      setValueText('ballspeed-value', data.data.current_shot.velocity*100);
+      setValueText('sidespin-value', data.data.current_shot.sidespin*100);
+      setValueText('topspin-value', data.data.current_shot.topspin*100);
+    } else {
+      console.warn('No current shot data available');
+    }
+  })
+  // // Fetch the ball feeder status
+  // //TODO: Implement dynamic bf index (must have the relation to the selected bd index)
+  // const bf_status = callApiMethod('/ballfeeders/0/status', 'GET').then((data) => {
+  //   console.log('received data:', console.log(JSON.stringify(data)));
+  //   if (data.data) {
+  //     setValueText('isbusy-value', data.data.is_busy);
+  //   } else {
+  //     console.warn('No ball feeder status data available');
+  //   }
+  // })
+  Promise.all([bd_status])
+    .then(() => {
+      renderAppStatus('OK');
+    })
+    .catch(error => {
+      console.error('Error fetching direct control status:', error);
+      renderAppStatus('Fehler beim Abrufen des Status:', error);
+    });
+}

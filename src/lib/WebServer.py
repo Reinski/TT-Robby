@@ -37,8 +37,8 @@ class WebServer:
                         },
                         'balldrivers': {
                             '^[0-9]+$': {
-                                'start': lambda bd: controller.API.bd_start_motors(int(bd), 50), # start motors with 50% speed
-                                'stop': lambda bd: controller.API.bd_stop_motors(int(bd)), 
+                                'start': lambda bd: controller.API.bd_start(int(bd)), # start motors with recent shot settings
+                                'stop': lambda bd: controller.API.bd_stop(int(bd)),
                                 'motors': {
                                     '^[0-9]+$': {
                                         'start': lambda bd, m: controller.API.bd_set_motor_speed(int(bd), int(m), 50), # start motor with 50% speed
@@ -79,8 +79,8 @@ class WebServer:
                                 'rotate_home': lambda mr: controller.API.mr_rotate(int(mr), 0.0),
                                 'motors': {
                                     '^[0-9]+$': {
-                                        'rotate_max': lambda mr, m: controller.API.mr_motor_rotate(int(mr), int(m), float(controller.machine_rotators[int(mr)].motors[int(m)]._halfspan_angle if controller.machine_rotators[int(mr)].motors[int(m)].__class__.__name__=='Sg92r' else 45.0)),
-                                        'rotate_min': lambda mr, m: controller.API.mr_motor_rotate(int(mr), int(m), -float(controller.machine_rotators[int(mr)].motors[int(m)]._halfspan_angle if controller.machine_rotators[int(mr)].motors[int(m)].__class__.__name__=='Sg92r' else 45.0)),
+                                        'rotate_max': lambda mr, m: controller.API.mr_motor_rotate_max(int(mr), int(m)),
+                                        'rotate_min': lambda mr, m: controller.API.mr_motor_rotate_min(int(mr), int(m)),
                                         'rotate_home': lambda mr, m: controller.API.mr_motor_rotate(int(mr), int(m), 0.0),
                                     },
                                 },
@@ -95,8 +95,8 @@ class WebServer:
                 'api': {
                     'v1':{
                         'system': {
-                            'config': lambda req_data: controller.adopt_general_settings(req_data['data']['settings']),
-                            'mode': lambda data: controller.request_mode_change(data), # switch mode to operation or configuration
+                            'config': lambda data: controller.adopt_general_settings(data['settings']),
+                            'mode': lambda data: controller.API.set_mode(data.get('mode', -1), data.get('mode_text', '')),
                         },
                         'balldrivers': {
                             '^[0-9]+$': {
@@ -110,26 +110,29 @@ class WebServer:
                                         'speed': lambda bd, data: self.set_bd_motor_speed(controller, int(bd), -1, data),
                                         '/default/': lambda bd, data: self.set_bd_motor_speed(controller, int(bd), -1, data),
                                     },
-                                    #'/default/': lambda: controller.ballDriver.getInformation(),
                                 },
-                                #'/default/': lambda: controller.ballDriver.getInformation(),
+                                'current_shot': lambda bd, data: controller.API.bd_set_current_shot(int(bd), data),
                             },
                         },
                         'ballstirrers': {
                             '^[0-9]+$': {
-                                'config': lambda bs, data: controller.ball_stirrers[int(bs)].setConfigData(data),
+                                'config': lambda bs, data: controller.API.bs_set_config(int(bs), data),
                                 'status': lambda bf: {},
+                                'motors': {
+                                    '^[0-9]+$': {
+                                        'config': lambda bf, m, data: controller.API.bs_set_motor_config(int(bf), int(m), data),
+                                    },
+                                },
                                 '/default/': lambda bs: {},
                             },
                         },
                         'ballfeeders': {
                             '^[0-9]+$': {
+                                'config': lambda bf, data: controller.API.bf_set_config(int(bf), data),
                                 'motors': {
                                     '^[0-9]+$': {
                                         'rotate': lambda bf, m, data: controller.API.bf_motor_rotate(int(bf), int(m), float(data['angle'])),
-                                        'config': lambda bf, data: controller.ball_feeders[int(bf)].setConfigData(data),
-                                        'status': lambda bf: {},
-                                        '/default/': lambda bf: {},
+                                        'config': lambda bf, m, data: controller.API.bf_set_motor_config(int(bf), int(m), data),
                                     },
                                 },
                             },
@@ -139,13 +142,11 @@ class WebServer:
                                 'motors': {
                                     '^[0-9]+$': {
                                         'rotate': lambda mr, m, data: controller.API.mr_motor_rotate(int(mr), int(m), float(data['angle'])),
-                                        'config': lambda mr, m, data: controller.machine_rotators[int(mr)].motors[int(m)].setConfigData(data),
-                                        'status': lambda mr: {},
-                                        '/default/': lambda mr: {},
+                                        'config': lambda mr, m, data: controller.API.mr_set_motor_config(int(mr), int(m), data),
                                     },
                                 },
-                                'rotate': lambda mr, data: controller.machine_rotators[int(mr)].rotate(float(data['angle'])),
-                                'config': lambda mr, data: controller.machine_rotators[int(mr)].setConfigData(data),
+                                'rotate': lambda mr, data: controller.API.mr_rotate(int(mr), float(data['angle'])),
+                                'config': lambda mr, data: controller.API.mr_set_config(int(mr), data),
                             },
                         },
                     }
@@ -157,6 +158,7 @@ class WebServer:
                     'v1':{
                         'system': {
                             'config': controller.getConfigData,
+                            'mode': controller.API.get_mode,
                             'status': controller.getStatusData,
                             '/default/': controller.getStatusData,
                         },
@@ -164,24 +166,24 @@ class WebServer:
                             '^[0-9]+$': {
                                 'motors': {
                                     '^[0-9]+$': {
-                                        'speed': lambda bd, m: {'speed': controller.ballDrivers[int(bd)].motors[int(m)].speed},
-                                        'config': lambda bd, m: controller.ballDrivers[int(bd)].motors[int(m)].getConfigData(),
-                                        'status': lambda bd, m: controller.ballDrivers[int(bd)].motors[int(m)].getStatusData(),
-                                        '/default/': lambda bd, m: controller.ballDrivers[int(bd)].motors[int(m)].getStatusData(),
+                                        'speed': lambda bd, m: {'speed': controller.ball_drivers[int(bd)].motors[int(m)].speed},
+                                        'config': lambda bd, m: controller.ball_drivers[int(bd)].motors[int(m)].getConfigData(),
+                                        'status': lambda bd, m: controller.ball_drivers[int(bd)].motors[int(m)].getStatusData(),
+                                        '/default/': lambda bd, m: controller.ball_drivers[int(bd)].motors[int(m)].getStatusData(),
                                     },
                                     'all': {
-                                        'config': lambda bd: list([m.getConfigData() for m in controller.ballDrivers[int(bd)].motors]),
-                                        'status': lambda bd: list([m.getStatusData() for m in controller.ballDrivers[int(bd)].motors]),
-                                        'speed': lambda bd: list([{'motor_number': m.speed} for m in controller.ballDrivers[int(bd)].motors]),
-                                        '/default/': lambda bd: list([m.getStatusData() for m in controller.ballDrivers[int(bd)].motors]),
+                                        'config': lambda bd: list([m.getConfigData() for m in controller.ball_drivers[int(bd)].motors]),
+                                        'status': lambda bd: list([m.getStatusData() for m in controller.ball_drivers[int(bd)].motors]),
+                                        'speed': lambda bd: list([{'motor_number': m.speed} for m in controller.ball_drivers[int(bd)].motors]),
+                                        '/default/': lambda bd: list([m.getStatusData() for m in controller.ball_drivers[int(bd)].motors]),
                                     },
-                                    '/default/': lambda bd: controller.ballDrivers[int(bd)].getStatusData(),
+                                    '/default/': lambda bd: controller.ball_drivers[int(bd)].getStatusData(),
                                 },
-                                'config': lambda bd: controller.ballDrivers[int(bd)].getConfigData(),
-                                'status': lambda bd: controller.ballDrivers[int(bd)].getStatusData(),
-                                '/default/': lambda bd: controller.ballDrivers[int(bd)].getStatusData(),
+                                'config': lambda bd: controller.ball_drivers[int(bd)].getConfigData(),
+                                'status': lambda bd: controller.ball_drivers[int(bd)].getStatusData(),
+                                '/default/': lambda bd: controller.ball_drivers[int(bd)].getStatusData(),
                             },
-                            'config': lambda: [bd.getConfigData() for bd in controller.ballDrivers],
+                            'config': lambda: [bd.getConfigData() for bd in controller.ball_drivers],
                         },
                         'ballstirrers': {
                             '^[0-9]+$': {
@@ -201,11 +203,11 @@ class WebServer:
                         },
                         'machinerotators': {
                             '^[0-9]+$': {
-                                'config': lambda bf: controller.API.get_machine_rotator_config(int(bf)),
+                                'config': lambda bf: controller.API.mr_get_config(int(bf)),
                                 #'status': lambda bf: controller.API.get_machine_rotator_status(int(bf)),
-                                '/default/': lambda bf: controller.API.get_machine_rotator_config(int(bf)),
+                                '/default/': lambda bf: controller.API.mr_get_config(int(bf)),
                             },
-                            'config': lambda: controller.API.get_machine_rotator_config(-1),
+                            'config': lambda: controller.API.mr_get_config(-1),
                         },
                     },
                 },
@@ -380,7 +382,7 @@ class WebServer:
             print(f"set_bd_motor_speed() called for {bd_number}-{motor_index} with {data=}...")
         ret = ''
         if motor_index < 0:
-            for i in range(len(controller.ballDrivers[bd_number].motors)):
+            for i in range(len(controller.ball_drivers[bd_number].motors)):
                 if ret:
                     ret += '\n'
                 ret += self.set_bd_motor_speed(controller, bd_number, i, data)
@@ -390,7 +392,7 @@ class WebServer:
             if spd is None:
                 ret = f"ERROR when setting speed of motor {bd_number}-{motor_index}: Element 'speed' not provided in data!"
             else:
-                controller.ballDrivers[bd_number].motors[motor_index].set_speed(int(spd))
+                controller.ball_drivers[bd_number].motors[motor_index].set_speed(int(spd))
         except Exception as e:
             ret = f"ERROR when setting speed of motor {motor_index}: {e}"
         return ret
@@ -399,13 +401,13 @@ class WebServer:
             print(f"set_bd_motor_config() called for {bd_number}-{motor_index} with {data=}...")
         ret = ''
         if motor_index < 0:
-            for i in range(len(controller.ballDrivers[bd_number].motors)):
+            for i in range(len(controller.ball_drivers[bd_number].motors)):
                 if ret:
                     ret += '\n'
                 ret += self.set_bd_motor_config(controller, bd_number, i, data)
             return ret
         try:
-            controller.ballDrivers[bd_number].motors[motor_index].setConfigData(data)
+            controller.ball_drivers[bd_number].motors[motor_index].setConfigData(data)
         except Exception as e:
             ret = f"ERROR when setting config of motor {bd_number}-{motor_index}: {e}"
         return ret
@@ -494,15 +496,22 @@ class WebServer:
                     print(f"{contains_data=}, {req_data=}")
                 if contains_data and req_data is not None:
                     if self.debug:
-                        print(f"calling delegate with {f_params=}, {req_data=}")
+                        print(f"extracting data from {req_data=}")
                     try:
                         data_dict = json.loads(req_data)
                     except Exception as e:
                         raise InputDataException(f"Data could not be parsed as json: {e}")
-                    tmp = f_delegate(*f_params, data_dict)
+                    try:
+                        data_element = data_dict['data'] # 'data' is the standard element for the API data
+                    except Exception as e:
+                        raise InputDataException(f"Data element not found: {e}")
+                    
+                    if self.debug:
+                        print(f"calling delegate '{f_delegate.__name__}' with {f_params=}, {data_element=}")
+                    tmp = f_delegate(*f_params, data_element)
                 else:
                     if self.debug:
-                        print(f"calling delegate with {f_params=}")
+                        print(f"calling delegate '{f_delegate.__name__}' with {f_params=}")
                     tmp = f_delegate(*f_params)
                 if self.debug:
                     print(f"result from API-method: {tmp}")

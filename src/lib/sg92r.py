@@ -101,7 +101,12 @@ class Sg92r:
             'sec_per_degree': self._sec_per_degree,
         }
     def setConfigData(self, data: dict) -> dict:
-        """Sets the object's attributes based on the configuration data."""
+        """Sets the object's attributes based on the configuration data.
+        Args:
+            data (dict): A dictionary containing the configuration data.
+        Returns:
+            dict: The updated configuration data.
+        """
         tmp = data.get('motor_number')
         if tmp:
             self._motor_number = int(tmp)

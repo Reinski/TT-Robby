@@ -3,7 +3,7 @@ from RobbyExceptions import InvalidOperationException
 
 class BallFeeder:
     """BallFeeder is responsible for dispensing singel balls controlling one or more motors."""
-    def __init__(self, motor, bf_index: int, action_cycle: list = [-40, 120, -80], mounting_index: int = 1, debug=False) -> None:
+    def __init__(self, motor, bf_index: int, action_cycle: list = [-77], mounting_index: int = 0, debug=False) -> None:
         """Initialize the BallFeeder with a motor and a push cycle.  
         Args:
             motor (StepMotorPIO): The motor to be used for dispensing balls.

@@ -1,0 +1,565 @@
+openapi: 3.1.0
+
+info:
+  title: TT-Robby Control API
+  version: 1.0.0
+  description: REST API for configuring and controlling machine components such as ballfeeders, balldrivers, and ballstirrers.
+
+servers:
+  # This dynamic url is supported in openAPI and SwaggerUI, but not in the VSCode extension.
+  #- url: "{scheme}://{host}:{port}/api/v1"
+  - url: "http://192.168.188.103:80/api/v1"
+    variables:
+      scheme:
+        default: http
+      host:
+        default: 127.0.0.1
+      port:
+        default: "80"
+
+paths:
+  /system/mode:
+    get:
+      summary: Retrieve current system mode
+      description: Fetches the mode the machine currently is in.
+      responses:
+        '200':
+          description: Successfully retrieved system mode.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: integer
+                    description: The current mode of the system.
+    put:
+      summary: Set system mode
+      description: Sets the mode the machine should be in.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                data:
+                  type: integer
+                  description: The mode to set the system to.
+      responses:
+        '200':
+          description: Successfully set system mode.
+
+  /system/status:
+    get:
+      summary: Retrieve system status
+      description: Fetches status data for the machine.
+      responses:
+        '200':
+          description: Successfully retrieved system status data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MachineStatusResponse'
+
+  /system/config:
+    get:
+      summary: Retrieve system configuration data
+      description: Fetches configuration data for the system.
+      responses:
+        '200':
+          description: Successfully retrieved system configuration data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MachineSettingsResponse'
+
+    put:
+      summary: Update system configuration data
+      description: Updates the configuration data for the system.
+      requestBody:
+        description: The complete updated configuration data for the system.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MachineSettingsResponse'
+      responses:
+        '200':
+          description: Successfully updated system configuration data.
+
+  /balldrivers/config:
+    get:
+      summary: Retrieve full balldriver configuration data
+      description: Fetches configuration data for all balldrivers.
+      responses:
+        '200':
+          description: Successfully retrieved balldriver configuration data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AllBalldriverConfigsResponse'
+
+    put:
+      summary: Update balldriver configuration
+      description: Updates the configuration data for all balldrivers at once, replacing the existing ones.
+      requestBody:
+        description: The complete updated configuration data for all balldrivers.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AllBalldriverConfigsResponse'
+      responses:
+        '200':
+          description: Successfully updated balldriver configuration.
+
+  /balldrivers/{index}/config:
+    get:
+      summary: Retrieve balldriver configuration data
+      description: Fetches configuration data for a specific balldriver.
+      parameters:
+        - name: index
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Index of the balldriver.
+      responses:
+        '200':
+          description: Successfully retrieved balldriver configuration data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BalldriverConfigResponse'
+
+    put:
+      summary: Update balldriver configuration
+      description: Updates the configuration data for a specific balldriver.
+      parameters:
+        - name: index
+          required: true
+          in: path
+          schema:
+            type: integer
+          description: Index of the balldriver.
+      requestBody:
+        description: The complete updated configuration data for the balldriver.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BalldriverConfigResponse'
+      responses:
+        '200':
+          description: Successfully updated balldriver configuration.
+
+  /ballfeeders/config:
+    get:
+      summary: Retrieve the full ballfeeder configuration data
+      description: Fetches configuration data for all ballfeeders.
+      responses:
+        '200':
+          description: Successfully retrieved ballfeeder configuration data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AllBallFeederConfigsResponse'
+
+    put:
+      summary: Update ballfeeder configuration
+      description: Updates the configuration data for all ballfeeders.
+      requestBody:
+        description: The complete updated configuration data for all ballfeeders.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AllBallFeederConfigsResponse'
+      responses:
+        '200':
+          description: Successfully updated ballfeeder configuration.
+
+  /ballfeeders/{index}/config:
+    get:
+      summary: Retrieve ballfeeder configuration data
+      description: Fetches configuration data for a specific ballfeeder.
+      parameters:
+        - name: index
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Index of the ballfeeder.
+      responses:
+        '200':
+          description: Successfully retrieved ballfeeder configuration data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BallFeederConfigResponse'
+
+    put:
+      summary: Update ballfeeder configuration
+      description: Updates the configuration data for a specific ballfeeder.
+      parameters:
+        - name: index
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Index of the ballfeeder.
+      requestBody:
+        description: The complete updated configuration data for the ballfeeder.
+        required: true
+        content:
+          application/json:
+              schema:
+                $ref: '#/components/schemas/BallFeederConfigResponse'
+      responses:
+        '200':
+          description: Successfully updated ballfeeder configuration.
+
+  /ballstirrers/config:
+    get:
+      summary: Retrieve the full ballstirrer configuration data
+      description: Fetches configuration data for all ballstirrers.
+      responses:
+        '200':
+          description: Successfully retrieved ballstirrer configuration data.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AllBallStirrerConfigsResponse'
+
+    put:
+      summary: Update ballstirrer configuration
+      description: Updates the configuration data for all ballstirrers.
+      requestBody:
+        description: The complete updated configuration data for all ballstirrers.
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/AllBallStirrerConfigsResponse'
+      responses:
+        '200':
+          description: Successfully updated ballstirrer configuration.
+
+  /ballstirrers/{index}/config:
+    get:
+      summary: Retrieve ballstirrer configuration data
+      description: Fetches configuration data for a specific ballstirrer.
+      parameters:
+        - name: index
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Index of the ballstirrer.
+      responses:
+        '200':
+          description: Successfully retrieved ballstirrer configuration data.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BallStirrerConfigResponse'
+
+    put:
+      summary: Update ballstirrer configuration
+      description: Updates the configuration data for a specific ballstirrer.
+      parameters:
+        - name: index
+          in: path
+          required: true
+          schema:
+            type: integer
+          description: Index of the ballstirrer.
+      requestBody:
+        description: The complete updated configuration data for the ballstirrer.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BallStirrerConfigResponse'
+      responses:
+        '200':
+          description: Successfully updated ballstirrer configuration.
+
+components:
+  schemas:
+    Integer:
+      type: integer
+      default: 0
+
+    MotorType:
+      type: string
+      enum:
+        - StepMotorPIO
+        - Sg92r
+
+    BallFeederMotorState:
+      type: object
+      properties:
+        action_cycle:
+          type: array
+          items:
+            type: integer
+        mounting_index:
+          type: integer
+    StepMotorConfig:
+      type: object
+      properties:
+        type:
+          $ref: '#/components/schemas/MotorType'
+        pio_block_index:
+          $ref: '#/components/schemas/Integer'
+        inner_motor_steps:
+          $ref: '#/components/schemas/Integer'
+        consecutive_pins:
+          $ref: '#/components/schemas/Integer'
+        gear_ratio:
+          $ref: '#/components/schemas/Integer'
+        runner_freq:
+          $ref: '#/components/schemas/Integer'
+        starting_gp_pin:
+          $ref: '#/components/schemas/Integer'
+        correction_steps:
+          $ref: '#/components/schemas/Integer'
+        counter_freq:
+          $ref: '#/components/schemas/Integer'
+      required:
+        - pio_block_index
+        - inner_motor_steps
+        - consecutive_pins
+        - gear_ratio
+        - runner_freq
+        - starting_gp_pin
+        - correction_steps
+        - counter_freq
+
+    Sg92rConfig:
+      type: object
+      properties:
+        motor_number:
+          $ref: '#/components/schemas/Integer'
+        halfspan_angle:
+          $ref: '#/components/schemas/Integer'
+        t_low:
+          type: number
+        t_high:
+          type: number
+        freq:
+          $ref: '#/components/schemas/Integer'
+        control_pin:
+          $ref: '#/components/schemas/Integer'
+      required:
+        - motor_number
+        - halfspan_angle
+        - t_low
+        - t_high
+        - freq
+        - control_pin
+
+    BallStirrerConfig:
+      type: object
+      properties:
+        type:
+          $ref: '#/components/schemas/MotorType'
+        config:
+          oneOf:
+            - $ref: '#/components/schemas/StepMotorConfig'
+            - $ref: '#/components/schemas/Sg92rConfig'
+      required:
+        - type
+        - config
+
+    AllBallStirrerConfigsResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/BallStirrerConfig'
+
+    BallStirrerConfigResponse:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/BallStirrerConfig'
+
+    BallFeederConfig:
+      type: object
+      properties:
+        bf_index:
+          type: integer
+        motor_states:
+          type: array
+          items:
+            $ref: '#/components/schemas/BallFeederMotorState'
+        motors:
+          type: array
+          items:
+            oneOf:
+              - $ref: '#/components/schemas/StepMotorConfig'
+              - $ref: '#/components/schemas/Sg92rConfig'
+      required:
+        - motor_states
+        - motors
+
+    AllBallFeederConfigsResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/BallFeederConfig'
+    
+    BallFeederConfigResponse:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/BallFeederConfig'
+    
+    MachineSettings:
+      type: object
+      properties:
+        default_ballspeed:
+          type: number
+        net_webserver_autostart:
+          type: boolean
+        max_ball_frequency:
+          type: number
+        default_sidespin:
+          type: number
+        net_webserver_port:
+          type: integer
+        hostname:
+          type: string
+        default_ball_feeder_cycle:
+          type: array
+          items:
+            type: integer
+        default_ball_feeder_mount_index:
+          type: integer
+        default_topspin:
+          type: number
+
+    Shot:
+      type: object
+      properties:
+        sidespin:
+          type: number
+        h_angle:
+          type: integer
+        speed:
+          type: number
+        v_angle:
+          type: integer
+        topspin:
+          type: number
+        pause:
+          type: number
+
+    ShotCycle:
+      type: object
+      properties:
+        shots:
+          type: array
+          items:
+            $ref: '#/components/schemas/Shot'
+
+    MachineConfig:
+      type: object
+      properties:
+        settings:
+          $ref: '#/components/schemas/MachineSettings'
+        shot_cycle:
+          $ref: '#/components/schemas/ShotCycle'
+        ballfeeders:
+          type: integer
+        balldrivers:
+          type: integer
+        ballstirrers:
+          type: integer
+
+    MachineStatus:
+      type: object
+      properties:
+        mode:
+          type: integer
+        status:
+          type: integer
+        shot_cycle:
+          $ref: '#/components/schemas/ShotCycle'
+
+    MachineSettingsResponse:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/MachineConfig'
+
+    MachineStatusResponse:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/MachineStatus'
+
+    DcMotorConfig:
+      type: object
+      properties:
+        motor_number:
+          type: integer
+        polarity:
+          type: integer
+
+    MotorDriver:
+      type: object
+      properties:
+        sda_pin:
+          type: integer
+        type:
+          type: string
+        i2c_channel:
+          type: integer
+        address:
+          type: integer
+
+    BalldriverConfig:
+      type: object
+      properties:
+        bd_number:
+          type: integer
+        motors:
+          type: array
+          items:
+            $ref: '#/components/schemas/DcMotorConfig'
+        wheel_diameters:
+          type: array
+          items:
+            type: number
+        motor_driver:
+          $ref: '#/components/schemas/MotorDriver'
+        motor_angles:
+          type: array
+          items:
+            type: integer
+
+    AllBalldriverConfigsResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/BalldriverConfig'
+
+    BalldriverConfigResponse:
+      type: object
+      properties:
+        data:
+          $ref: '#/components/schemas/BalldriverConfig'
+

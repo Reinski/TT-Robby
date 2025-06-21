@@ -3,7 +3,7 @@
 # 
 # This software is released under the MIT License.
 # https://opensource.org/licenses/MIT
-from lib.RobbyController import RobbyController, STATUS_PREPARING
+from lib.RobbyController import RobbyController
 from lib.WebServer import WebServer
 from machine import Pin
 

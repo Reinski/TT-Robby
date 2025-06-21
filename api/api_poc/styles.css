@@ -131,6 +131,7 @@ main {
   padding: 1em;
   border: 1px solid #ddd;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  width: 100%;
 }
 
 .config-table {
@@ -173,4 +174,30 @@ main {
 }
 .function-button:active {
   background-color: #ede31c;
+}
+
+.ball-properties {
+  display: grid;
+  grid-template-columns: auto 200px 1fr;
+  gap: 10px;
+  width: 100%;
+}
+/* .ball-properties > div {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20px;
+} */
+.ball-properties label {
+  grid-column: 1;
+  margin-right: 10px;
+  text-align: left;
+}
+.ball-properties input[type="range"] {
+  grid-column: 2;
+  width: 200px;
+}
+.ball-properties span {
+  grid-column: 3;
+  overflow: visible;
+  margin-bottom: 20px;
 }

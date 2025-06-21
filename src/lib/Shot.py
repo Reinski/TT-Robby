@@ -3,7 +3,7 @@
 # This software is released under the MIT License.
 # https://opensource.org/licenses/MIT
 
-import BallDriver, RobbySettings
+import RobbySettings
 
 class Shot:
     """Shot defines how the machine must play the ball and with which of its ball drivers (there might be multiple)."""
@@ -17,11 +17,11 @@ class Shot:
         self.__bd_number = ball_driver_index
         self.__motor_settings = None
 
-    def init_for_bd(self, ball_driver: BallDriver.BallDriver, ball_driver_index: int = -1):
-        """Initializes the shot for a specific ball driver. The bd must take care to call this method before it actually plays the shot."""
-        self.__motor_settings = ball_driver.calc_motor_speeds(self.__speed, self.__topspin, self.__sidespin)
-        if ball_driver_index >= 0:
-            self.__bd_number = ball_driver_index
+    # def init_for_bd(self, ball_driver: BallDriver.BallDriver, ball_driver_index: int = -1):
+    #     """Initializes the shot for a specific ball driver. The bd (or the controller) must take care to call this method before it actually plays the shot."""
+    #     self.__motor_settings = ball_driver.calc_motor_speeds(self.__speed, self.__topspin, self.__sidespin)
+    #     if ball_driver_index >= 0:
+    #         self.__bd_number = ball_driver_index
 
     def __set_topspin(self, value: float):
         if value < 0.0:
@@ -79,8 +79,46 @@ class Shot:
             'pause': self.__pause,
             'h_angle': self.__horiz_angle,
             'v_angle': self.__vert_angle,
+            'bd_number': self.__bd_number,
         }
 
-    @classmethod
-    def get_default_shot_from_settings(cls, settings: RobbySettings.RobbySettings) -> Shot:
-        return Shot(settings.default_topspin, settings.default_sidespin, settings.default_ball_speed, 1.0/settings.default_ball_frequency, 0, 0)
+def get_default_shot_from_settings(settings: RobbySettings.RobbySettings) -> Shot:
+    return Shot(settings.default_topspin, settings.default_sidespin, settings.default_ball_speed, 1.0/settings.default_ball_frequency, 0, 0)
+
+def create_from_config(shot_cfg: dict) -> Shot:
+    """Factory function to create a Shot instance from a serialized configuration.
+    
+    Args:
+        shot_cfg (dict): The serialized config.
+    
+    Returns:
+        Shot: An instance of the Shot class.
+    """
+    return Shot(
+        topspin=shot_cfg.get('topspin', 0.0),
+        sidespin=shot_cfg.get('sidespin', 0.0),
+        speed=shot_cfg.get('speed', 0.0),
+        pause=shot_cfg.get('pause', 0.0),
+        h_angle=shot_cfg.get('h_angle', 0),
+        v_angle=shot_cfg.get('v_angle', 0),
+        ball_driver_index=shot_cfg.get('bd_number', 0)
+    )
+
+def create_from_shot(shot: Shot) -> Shot:
+    """Factory function to create a copy of a Shot instance.
+    
+    Args:
+        shot (Shot): The Shot instance to copy.
+    
+    Returns:
+        Shot: A new instance of the Shot class with the same properties.
+    """
+    return Shot(
+        topspin=shot.Topspin,
+        sidespin=shot.Sidespin,
+        speed=shot.BallSpeed,
+        pause=shot.Pause,
+        h_angle=shot.HorizontalAngle,
+        v_angle=shot.VerticalAngle,
+        ball_driver_index=shot.BallDriverNumber
+    )
